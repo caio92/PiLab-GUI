@@ -5,35 +5,38 @@ from tkinter import *
 
 
 scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
+scaleReadingText = "\n\n Leitura atual:\nMUITOS KGs"
 
 
 class GUIButton:
-    def __init__(self, tkButton, buttonType):
+    def __init__(self, tkButton, buttonType, buttonTextVar):
         self.button = tkButton
-        self.labelTextVar = StringVar()
-        self.buttonLabel = Label(tkButton, textvariable=self.labelTextVar)
-        self.buttonLabel.pack(fill=BOTH, expand=1)
+        self.buttonTextVar = buttonTextVar
         self.buttonToggle = True
         self.buttonType = buttonType
 
         if buttonType == "scale":
             self.buttonText = scaleText
 
-        self.labelTextVar.set(self.buttonText[0])
+        self.buttonTextVar.set(self.buttonText[0])
 
     def ToggleText(self):
         if self.buttonToggle:
-            self.labelTextVar.set(self.buttonText[1])
+            self.buttonTextVar.set(self.buttonText[1])
         else:
-            self.labelTextVar.set(self.buttonText[0])
+            self.buttonTextVar.set(self.buttonText[0])
             
         self.buttonToggle = not self.buttonToggle        
 
     def SetText(self, newText):
-        self.labelTextVar.set(newText)
+        self.buttonTextVar.set(newText)
 
     def GetText(self):
-        self.labelTextVar.get()
+        return self.buttonTextVar.get()
+
+    def SetParam(self, param, value):
+        self.button[param]=value
+        self.button.grid()
         
 
 def ScaleButtonClick(button):
@@ -42,9 +45,15 @@ def ScaleButtonClick(button):
         buttonText = button.GetText()
 
         #ler sensor da balanca aqui
+
+        button.SetParam("anchor", 'n')
+
+        buttonText += scaleReadingText
+        button.SetText(buttonText)
         
     else:
         button.ToggleText()
+        button.SetParam("anchor", 'center')
 
 
 def UpdateScale(button):
@@ -85,8 +94,11 @@ recipesFrame.grid(row=0, column=1, pady=(7.5,2.5), padx=(2.5,7.5))
 temperatureFrame.grid(row=1, column=0, pady=(2.5,7.5), padx=(7.5,2.5))
 allFrame.grid(row=1, column=1, pady=(2.5,7.5), padx=(2.5,7.5))
 
+#configura variaveis de texto dos botoes
+scaleTextVar = StringVar()
+
 #declara os botoes dos frames
-scaleButton = Button(scaleFrame, command= lambda: ScaleButtonClick(scaleButtonGUI), height=7, width=16)
+scaleButton = Button(scaleFrame, textvariable=scaleTextVar, command=lambda: ScaleButtonClick(scaleButtonGUI), height=7, width=16)
 newRecipeButton = Button(recipesFrame, height=7, width=6, text="Editar\nReceita")
 useRecipeButton = Button(recipesFrame, height=7, width=6, text="Executar\nReceita")
 adjustTempButton = Button(temperatureFrame, height=7, width=6, text="Ajustar\nTemp.")
@@ -102,6 +114,6 @@ measureTempButton.grid(column=1, row=0, sticky=N+S+E+W)
 allButton.grid(sticky=N+S+E+W)
 
 #cria estrutura de dados dos botoes
-scaleButtonGUI = GUIButton(scaleButton, "scale")
+scaleButtonGUI = GUIButton(scaleButton, "scale", scaleTextVar)
 
 root.mainloop()
