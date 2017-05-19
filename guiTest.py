@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from tkinter import *
 
 scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
