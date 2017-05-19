@@ -3,6 +3,7 @@ from tkinter import *
 
 scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
 scaleReadingText = "\n\n Leitura atual:\nMUITOS KGs"
+onOffText = ["Turn\nOn", "Turn\nOff"]
 
 class PyLabApp (Tk):
 
@@ -33,15 +34,26 @@ class PyLabApp (Tk):
         self.show_frame("MainPage")
 
 class GUIButton:
-    def __init__(self, tkButton, buttonType, buttonTextVar):
-        self.button = tkButton
-        self.buttonTextVar = buttonTextVar
+    def __init__(self, buttonType, master, **kwargs):
+        #self.button = tkButton
+
+        if "textvariable" not in kwargs:
+            self.buttonTextVar = StringVar()
+            kwargs.update({'textvariable': self.buttonTextVar})
+            #self.button = Button(master, kwargs, textvariable=self.buttonTextVar)
+        if "command" not in kwargs:
+            kwargs.update({'command': lambda: self.ToggleText()})
+            
+        self.button = Button(master, kwargs)
+            
         self.buttonToggle = True
         self.buttonType = buttonType
 
         if buttonType == "scale":
             self.buttonText = scaleText
-
+        elif buttonType == "measureTemp":
+            self.buttonText = onOffText
+            
         self.buttonTextVar.set(self.buttonText[0])
 
     def ToggleText(self):
@@ -61,6 +73,9 @@ class GUIButton:
     def SetParam(self, param, value):
         self.button[param]=value
         self.button.grid()
+
+    def GetButton(self):
+        return self.button
 
 class MainPage(Frame):
  
@@ -118,11 +133,11 @@ class MainPage(Frame):
         temperatureFrame.grid(row=1, column=0, pady=(2.5,7.5), padx=(7.5,2.5))
         allFrame.grid(row=1, column=1, pady=(2.5,7.5), padx=(2.5,7.5))
 
-        #configura variaveis de texto dos botoes
-        scaleTextVar = StringVar()
+        #cria estrutura de dados dos botoes
+        scaleButtonGUI = GUIButton("scale", scaleFrame, command=lambda: self.ScaleButtonClick(scaleButtonGUI), height=7, width=16)
 
         #declara os botoes dos frames
-        scaleButton = Button(scaleFrame, textvariable=scaleTextVar, command=lambda: self.ScaleButtonClick(scaleButtonGUI), height=7, width=16)
+        scaleButton = scaleButtonGUI.GetButton()
         newRecipeButton = Button(recipesFrame, height=7, width=6, text="Editar\nReceita")
         useRecipeButton = Button(recipesFrame, height=7, width=6, text="Executar\nReceita")
         adjustTempButton = Button(temperatureFrame, height=7, width=6, text="Ajustar\nTemp.")
@@ -137,9 +152,6 @@ class MainPage(Frame):
         measureTempButton.grid(column=1, row=0, sticky=N+S+E+W)
         allButton.grid(sticky=N+S+E+W)
 
-        #cria estrutura de dados dos botoes
-        scaleButtonGUI = GUIButton(scaleButton, "scale", scaleTextVar)
-
 class GetTemperatures(Frame):
 
     def __init__(self, parent, controller):
@@ -149,10 +161,10 @@ class GetTemperatures(Frame):
         self.isCelsius = BooleanVar()
         self.isCelsius.set(True)
 
-        tempFrame1 = Frame(self, width=320, height= 50, bg='green')
-        tempFrame2 = Frame(self, width=320, height= 50, bg='red')
-        tempFrame3 = Frame(self, width=320, height= 50, bg='yellow')
-        bottomFrame = Frame(self, width=320, height= 50, bg='cyan')
+        tempFrame1 = Frame(self, width=320, height= 50)#, bg='green')
+        tempFrame2 = Frame(self, width=320, height= 50)#, bg='red')
+        tempFrame3 = Frame(self, width=320, height= 50)#, bg='yellow')
+        bottomFrame = Frame(self, width=320, height= 50)#, bg='cyan')
         unitsFrame = Frame(bottomFrame, width=240, height=50, borderwidth=2, bg="black")
 
         tempFrame1.grid(column=0, row=0, pady=(12.5,2.5), padx=(10,10))#, sticky="news")
@@ -182,9 +194,13 @@ class GetTemperatures(Frame):
         tempFrame3.grid_propagate(False)
         unitsFrame.grid_propagate(False)
 
-        toggleTempButton1 = Button(tempFrame1, text="On/Off")
-        toggleTempButton2 = Button(tempFrame2, text="On/Off")
-        toggleTempButton3 = Button(tempFrame3, text="On/Off")
+        toggleTempButtonGUI1 = GUIButton("measureTemp", tempFrame1)
+        toggleTempButtonGUI2 = GUIButton("measureTemp", tempFrame2)
+        toggleTempButtonGUI3 = GUIButton("measureTemp", tempFrame3)
+
+        toggleTempButton1 = toggleTempButtonGUI1.GetButton()
+        toggleTempButton2 = toggleTempButtonGUI2.GetButton()
+        toggleTempButton3 = toggleTempButtonGUI3.GetButton()
 
         toggleTempButton1.grid(row=0, column=0, sticky='news')
         toggleTempButton2.grid(row=0, column=0, sticky='news')
