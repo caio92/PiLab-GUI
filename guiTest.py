@@ -16,16 +16,16 @@ class PyLabApp (Tk):
         Tk.__init__(self, *args, **kwargs)
 
         self.title("Layout Prototype")
-
-        container = Frame(self, width=320, height=240)
-
+        self.geometry("320x240")
+        container = Frame(self)#, width=320, height=240)
+        container.pack(side="top", fill="both", expand=True)
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
         container.grid()
 
         self.frames = {}
-        for F in (MainPage, GetTemperatures, PageTwo):
+        for F in (MainPage, GetTemperatures):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -111,21 +111,26 @@ class MainPage(Frame):
         allFrame = Frame (self, width=150, height=110)#, bg='yellow')
 
         #configura comportamento dos frames
-        self.grid_rowconfigure( 1, weight=1)
-        self.grid_columnconfigure( 1, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        scaleFrame.grid_rowconfigure( 0, weight=1)
-        scaleFrame.grid_columnconfigure( 0, weight=1)
-        temperatureFrame.grid_rowconfigure( 0, weight=1)
-        temperatureFrame.grid_columnconfigure( 1, weight=1)
-        temperatureFrame.grid_columnconfigure( 0, weight=1)
-        allFrame.grid_rowconfigure( 0, weight=1)
-        allFrame.grid_columnconfigure( 0, weight=1)
-        recipesFrame.grid_columnconfigure( 0, weight=1)
-        recipesFrame.grid_columnconfigure( 1, weight=1)
-        recipesFrame.grid_rowconfigure( 0, weight=1)
+        scaleFrame.grid_rowconfigure(0, weight=1)
+        scaleFrame.grid_columnconfigure(0, weight=1)
+        temperatureFrame.grid_rowconfigure(0, weight=1)
+        temperatureFrame.grid_columnconfigure(1, weight=1)
+        temperatureFrame.grid_columnconfigure(0, weight=1)
+        allFrame.grid_rowconfigure(0, weight=1)
+        allFrame.grid_columnconfigure(0, weight=1)
+        recipesFrame.grid_columnconfigure(0, weight=1)
+        recipesFrame.grid_columnconfigure(1, weight=1)
+        recipesFrame.grid_rowconfigure(0, weight=1)
+
+        scaleFrame.grid_propagate(False)
+        temperatureFrame.grid_propagate(False)
+        allFrame.grid_propagate(False)
+        recipesFrame.grid_propagate(False)
 
         #coloca as frames no GRID
         scaleFrame.grid(row=0, column=0, pady=(7.5,2.5), padx=(7.5,2.5))
@@ -134,23 +139,23 @@ class MainPage(Frame):
         allFrame.grid(row=1, column=1, pady=(2.5,7.5), padx=(2.5,7.5))
 
         #cria estrutura de dados dos botoes
-        scaleButtonGUI = GUIButton("scale", scaleFrame, command=lambda: self.ScaleButtonClick(scaleButtonGUI), height=7, width=16)
+        scaleButtonGUI = GUIButton("scale", scaleFrame, command=lambda: self.ScaleButtonClick(scaleButtonGUI))
 
         #declara os botoes dos frames
         scaleButton = scaleButtonGUI.GetButton()
-        newRecipeButton = Button(recipesFrame, height=7, width=6, text="Editar\nReceita")
-        useRecipeButton = Button(recipesFrame, height=7, width=6, text="Executar\nReceita")
-        adjustTempButton = Button(temperatureFrame, height=7, width=6, text="Ajustar\nTemp.")
-        measureTempButton = Button(temperatureFrame, height=7, width=6, text="Medir\nTemp.", command=lambda: controller.show_frame("GetTemperatures"))
-        allButton = Button(allFrame, height=7, width=16, text="Rotina Completa")
+        newRecipeButton = Button(recipesFrame, text="Editar\nReceita", width=5)
+        useRecipeButton = Button(recipesFrame, text="Executar\nReceita", width=5)
+        adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5)
+        measureTempButton = Button(temperatureFrame, text="Medir\nTemp.", width=5, command=lambda: controller.show_frame("GetTemperatures"))
+        allButton = Button(allFrame, text="Rotina Completa")
 
         #coloca os botoes no grid do frame
-        newRecipeButton.grid(column=0, row=0, sticky=N+S+E+W)
-        useRecipeButton.grid(column=1, row=0, sticky=N+S+E+W)
-        scaleButton.grid(sticky=N+S+E+W)
-        adjustTempButton.grid(column=0, row=0, sticky=N+S+E+W)
-        measureTempButton.grid(column=1, row=0, sticky=N+S+E+W)
-        allButton.grid(sticky=N+S+E+W)
+        newRecipeButton.grid(column=0, row=0, sticky='news')
+        useRecipeButton.grid(column=1, row=0, sticky='news')
+        scaleButton.grid(column=0, row=0, sticky='news')
+        adjustTempButton.grid(column=0, row=0, sticky='news')
+        measureTempButton.grid(column=1, row=0, sticky='news')
+        allButton.grid(row=0, column=0, sticky='news')
 
 class GetTemperatures(Frame):
 
@@ -161,17 +166,17 @@ class GetTemperatures(Frame):
         self.isCelsius = BooleanVar()
         self.isCelsius.set(True)
 
-        tempFrame1 = Frame(self, width=320, height= 50)#, bg='green')
-        tempFrame2 = Frame(self, width=320, height= 50)#, bg='red')
-        tempFrame3 = Frame(self, width=320, height= 50)#, bg='yellow')
-        bottomFrame = Frame(self, width=320, height= 50)#, bg='cyan')
-        unitsFrame = Frame(bottomFrame, width=240, height=50, borderwidth=2, bg="black")
+        tempFrame1 = Frame(self, width=305, height= 54)#, bg='green')
+        tempFrame2 = Frame(self, width=305, height= 54)#, bg='red')
+        tempFrame3 = Frame(self, width=305, height= 54)#, bg='yellow')
+        bottomFrame = Frame(self, width=305, height= 54)#, bg='cyan')
+        unitsFrame = Frame(bottomFrame, borderwidth=1, bg="black", width=225, height=54)
 
-        tempFrame1.grid(column=0, row=0, pady=(12.5,2.5), padx=(10,10))#, sticky="news")
-        tempFrame2.grid(column=0, row=1, pady=(2.5,2.5), padx=(10,10))
-        tempFrame3.grid(column=0, row=2, pady=(2.5,2.5), padx=(10,10))
-        bottomFrame.grid(column=0, row=3, pady=(2.5,12.5), padx=(10,10))
-        unitsFrame.grid(column=0, row=0, sticky="news")
+        tempFrame1.grid(column=0, row=0, pady=(7.5,1.5), padx=(7.5,7.5), sticky="news")
+        tempFrame2.grid(column=0, row=1, pady=(1.5,1.5), padx=(7.5,7.5))
+        tempFrame3.grid(column=0, row=2, pady=(1.5,1.5), padx=(7.5,7.5))
+        bottomFrame.grid(column=0, row=3, pady=(1.5,7.5), padx=(7.5,7.5))
+        unitsFrame.grid(column=0, row=0, padx=(0,5), sticky="news")
 
         #configura comportamento dos frames
         tempFrame1.grid_rowconfigure(0, weight=1)
@@ -194,9 +199,9 @@ class GetTemperatures(Frame):
         tempFrame3.grid_propagate(False)
         unitsFrame.grid_propagate(False)
 
-        toggleTempButtonGUI1 = GUIButton("measureTemp", tempFrame1)
-        toggleTempButtonGUI2 = GUIButton("measureTemp", tempFrame2)
-        toggleTempButtonGUI3 = GUIButton("measureTemp", tempFrame3)
+        toggleTempButtonGUI1 = GUIButton("measureTemp", tempFrame1, width=5)
+        toggleTempButtonGUI2 = GUIButton("measureTemp", tempFrame2, width=5)
+        toggleTempButtonGUI3 = GUIButton("measureTemp", tempFrame3, width=5)
 
         toggleTempButton1 = toggleTempButtonGUI1.GetButton()
         toggleTempButton2 = toggleTempButtonGUI2.GetButton()
@@ -225,7 +230,7 @@ class GetTemperatures(Frame):
 
         celsiusRadio.select()
 
-        backButton = Button(bottomFrame, text="Voltar", command=lambda: controller.show_frame("MainPage"))
+        backButton = Button(bottomFrame, text="Voltar", width=6, command=lambda: controller.show_frame("MainPage"))
         backButton.grid(row=0, column=1, sticky='news')
 
 class PageTwo(Frame):
