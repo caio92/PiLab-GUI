@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from tkinter import *
 from tkinter import font
+from tkinter import messagebox
+
 import pdb
 
 scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
@@ -249,6 +251,52 @@ class GetTemperatures(Frame):
 
 class SetTemperature(Frame):
     
+    isRunning = False
+    controller = None
+        
+    def CheckBeforeReturn(self, buttonGUI):
+        if self.isRunning:
+            
+            app.SetParam(self.nametowidget('bottomFrame.returnButton'), "state", 'disabled')
+            
+            appY=app.winfo_y()
+            print(appY)
+            
+            print(appY+appY/2)
+                        
+            warning = Tk()
+            warning.title("Attention!")
+            warning.geometry("320x120+%d+%d" % (app.winfo_x(), appY+appY/2))
+            warning.lift()
+            warning.grid_columnconfigure(0, weight=1)
+            warning.grid_rowconfigure(0, weight=1)
+            warning.grid_rowconfigure(1, weight=1)
+            buttonFrame = Frame(warning)
+            buttonFrame.grid(row=1, column=0, sticky="news")
+            buttonFrame.grid_columnconfigure(0, weight=1)
+            buttonFrame.grid_columnconfigure(1, weight=1)
+            buttonFrame.grid_rowconfigure(0, weight=1)
+                        
+            label = Label(warning, text="Routine is running and you should\n"\
+                    "stop it before going back.\nDo you want to stop it now?",\
+                    width=220, font=font.Font(weight="bold", size=10))
+            label.grid(row=0, column=0, sticky="news", padx=10, pady=10)
+            yesButton = Button(buttonFrame, text="Yes", command=lambda: self.HaltAndDestroy(warning, buttonGUI, True))
+            yesButton.grid(row=0, column=0, sticky="news")
+            noButton = Button(buttonFrame, text="No", command=lambda: self.HaltAndDestroy(warning, buttonGUI, False))
+            noButton.grid(row=0, column=1, sticky="news")
+            
+        else:
+            self.controller.show_frame("MainPage")
+            
+    def HaltAndDestroy(self, warning, buttonGUI, halt):
+        if halt:
+            self.StopRoutine(buttonGUI)
+        warning.destroy()
+        app.SetParam(self.nametowidget('bottomFrame.returnButton'), "state", 'normal')
+        self.controller.show_frame("MainPage")             
+        
+    
     def ChangeLabelUnit(self, textVar, unit):
         textVar.set(unit)
         
@@ -259,6 +307,7 @@ class SetTemperature(Frame):
         app.SetParam(self.nametowidget('setTempFrame.entryField'), "state", 'disabled')
         app.SetParam(self.nametowidget('bottomFrame.unitsFrame.celsiusRadio'), "state", 'disabled')
         app.SetParam(self.nametowidget('bottomFrame.unitsFrame.fahrRadio'), "state", 'disabled')
+        self.isRunning = True
         
     def StopRoutine(self, buttonGUI):
         #Update botão
@@ -267,6 +316,7 @@ class SetTemperature(Frame):
         app.SetParam(self.nametowidget('bottomFrame.unitsFrame.fahrRadio'), "state", 'normal')
         buttonGUI.ToggleText()
         app.SetParam(buttonGUI.GetButton(), "state",  "normal")
+        self.isRunning = False
         
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
@@ -275,16 +325,17 @@ class SetTemperature(Frame):
         self.isCelsius = BooleanVar()
         self.isCelsius.set(True)
 
-        targetTempFrame = Frame(self, width=305, height= 54)#, bg='green')
-        reservTempsFrame = Frame(self, width=305, height= 54)#, bg='red')
-        setTempFrame = Frame(self, width=305, height= 54, name="setTempFrame")#, bg='yellow')
-        bottomFrame = Frame(self, width=305, height= 54, name="bottomFrame")#, bg='cyan')
+        targetTempFrame = Frame(self, width=305, height= 54)
+        reservTempsFrame = Frame(self, width=305, height= 54)
+        setTempFrame = Frame(self, width=305, height= 54, name="setTempFrame")
+        bottomFrame = Frame(self, width=305, height= 54, name="bottomFrame")
         
-        unitsFrame = Frame(bottomFrame, borderwidth=1, bg="black", width=225, height=54, name="unitsFrame")
+        unitsFrame = Frame(bottomFrame, borderwidth=1, bg="black", \
+                     width=225, height=54, name="unitsFrame")
         tempFrame1 = Frame(reservTempsFrame, width=150, height=54)
         tempFrame2 = Frame(reservTempsFrame, width=150, height=54)
 
-        setTempFrame.grid(column=0, row=0, pady=(7.5,1.5), padx=(7.5,7.5), sticky="news")
+        setTempFrame.grid(column=0, row=0, pady=(7.5,1.5), padx=(7.5,7.5))
         targetTempFrame.grid(column=0, row=1, pady=(1.5,1.5), padx=(7.5,7.5))
         reservTempsFrame.grid(column=0, row=2, pady=(1.5,1.5), padx=(7.5,7.5))
         bottomFrame.grid(column=0, row=3, pady=(1.5,7.5), padx=(7.5,7.5))
@@ -320,10 +371,15 @@ class SetTemperature(Frame):
         tempFrame1.grid_propagate(False)
         tempFrame2.grid_propagate(False)
                 
-        entryField = Entry(setTempFrame, width=3, font=font.Font(size=20), justify="right", name="entryField")
-        runButtonGUI = GUIButton("runButton", setTempFrame, text="Run", width=5, command=lambda: self.RunRoutine(runButtonGUI), name="runButton")
+        entryField = Entry(setTempFrame, width=3, name="entryField", \
+                     font=font.Font(size=20), justify="right")
+        runButtonGUI = GUIButton("runButton", setTempFrame, text="Run", \
+                       width=5, name="runButton", \
+                       command=lambda: self.RunRoutine(runButtonGUI))
         runButton = runButtonGUI.GetButton()
-        stopButton = Button(setTempFrame, text="Stop", width=5, command=lambda: self.StopRoutine(runButtonGUI), name="stopButton")
+        stopButton = Button(setTempFrame, text="Stop", width=5, \
+                     command=lambda: self.StopRoutine(runButtonGUI), \
+                     name="stopButton")
         
         unitVar = StringVar()
         unitVar.set("°C")
@@ -348,15 +404,25 @@ class SetTemperature(Frame):
         unitsLabel = Label(unitsFrame, text="Temp.\nUnit:")
         unitsLabel.grid(row=0,column=0, sticky="news")
 
-        celsiusRadio = Radiobutton(unitsFrame, text="Celsius\n[°C]", name="celsiusRadio", command=lambda: self.ChangeLabelUnit(unitVar, "°C"), width=6, variable=self.isCelsius, value=True, padx=3, pady=3, indicatoron=0)
-        fahrRadio = Radiobutton(unitsFrame, text="Fahrenheit\n[°F]", name="fahrRadio", command=lambda: self.ChangeLabelUnit(unitVar, "°F"), width=6, variable=self.isCelsius, value=False, padx=3, pady=3, indicatoron=0)
+        celsiusRadio = Radiobutton(unitsFrame, text="Celsius\n[°C]",\
+                       name="celsiusRadio", width=6, \
+                       command=lambda: self.ChangeLabelUnit(unitVar, "°C"),\
+                       variable=self.isCelsius, value=True, padx=3,\
+                       pady=3, indicatoron=0)
+        fahrRadio = Radiobutton(unitsFrame, text="Fahrenheit\n[°F]",\
+                    name="fahrRadio", width=6, \
+                    command=lambda: self.ChangeLabelUnit(unitVar, "°F"),\
+                    variable=self.isCelsius, value=False, padx=3, pady=3,\
+                    indicatoron=0)
 
         celsiusRadio.grid(row=0, column=1, sticky="news")
         fahrRadio.grid(row=0, column=2, sticky="news")
 
         celsiusRadio.select()
 
-        backButton = Button(bottomFrame, text="Voltar", width=6, command=lambda: controller.show_frame("MainPage"))
+        backButton = Button(bottomFrame, text="Voltar", width=6, \
+                     command=lambda: self.CheckBeforeReturn(runButtonGUI),\
+                     name="returnButton")
         backButton.grid(row=0, column=1, sticky='news')
 
 if __name__ == "__main__":
