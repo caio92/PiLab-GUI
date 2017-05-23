@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 from tkinter import *
+from tkinter import font
+import pdb
 
 scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
 scaleReadingText = "\n\n Leitura atual:\nMUITOS KGs"
 onOffText = ["Turn\nOn", "Turn\nOff"]
+runText = ["Run", "Running"]
 
 class PyLabApp (Tk):
 
@@ -11,6 +14,19 @@ class PyLabApp (Tk):
             '''Show a frame for the given page name'''
             frame = self.frames[page_name]
             frame.tkraise()
+            
+    def SetParam(self, widget, param, value):
+        widget[param]=value
+        widget.grid()
+        
+    def AllChildren (self, wid) :
+        _list = wid.winfo_children()
+
+        for item in _list :
+            if item.winfo_children() :
+                _list.extend(item.winfo_children())
+
+        return _list
 
     def __init__(self, *args, **kwargs):
         Tk.__init__(self, *args, **kwargs)
@@ -25,7 +41,7 @@ class PyLabApp (Tk):
         container.grid()
 
         self.frames = {}
-        for F in (MainPage, GetTemperatures):
+        for F in (MainPage, GetTemperatures, SetTemperature):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -53,6 +69,8 @@ class GUIButton:
             self.buttonText = scaleText
         elif buttonType == "measureTemp":
             self.buttonText = onOffText
+        else:
+            self.buttonText = runText
             
         self.buttonTextVar.set(self.buttonText[0])
 
@@ -70,10 +88,6 @@ class GUIButton:
     def GetText(self):
         return self.buttonTextVar.get()
 
-    def SetParam(self, param, value):
-        self.button[param]=value
-        self.button.grid()
-
     def GetButton(self):
         return self.button
 
@@ -86,14 +100,14 @@ class MainPage(Frame):
 
             #ler sensor da balanca aqui
 
-            button.SetParam("anchor", 'n')
+            app.SetParam(button.GetButton(), "anchor", 'n')
 
             buttonText += scaleReadingText
             button.SetText(buttonText)
             
         else:
             button.ToggleText()
-            button.SetParam("anchor", 'center')
+            app.SetParam(button.GetButton(), "anchor", 'center')
 
 
     def UpdateScale(self, button):
@@ -145,7 +159,7 @@ class MainPage(Frame):
         scaleButton = scaleButtonGUI.GetButton()
         newRecipeButton = Button(recipesFrame, text="Editar\nReceita", width=5)
         useRecipeButton = Button(recipesFrame, text="Executar\nReceita", width=5)
-        adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5)
+        adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5, command=lambda: controller.show_frame("SetTemperature"))
         measureTempButton = Button(temperatureFrame, text="Medir\nTemp.", width=5, command=lambda: controller.show_frame("GetTemperatures"))
         allButton = Button(allFrame, text="Rotina Completa")
 
@@ -233,19 +247,117 @@ class GetTemperatures(Frame):
         backButton = Button(bottomFrame, text="Voltar", width=6, command=lambda: controller.show_frame("MainPage"))
         backButton.grid(row=0, column=1, sticky='news')
 
-class PageTwo(Frame):
-
+class SetTemperature(Frame):
+    
+    def ChangeLabelUnit(self, textVar, unit):
+        textVar.set(unit)
+        
+    def RunRoutine(self, buttonGUI):
+        #Update botão
+        buttonGUI.ToggleText()
+        app.SetParam(buttonGUI.GetButton(), "state",  "disabled")
+        app.SetParam(self.nametowidget('setTempFrame.entryField'), "state", 'disabled')
+        app.SetParam(self.nametowidget('bottomFrame.unitsFrame.celsiusRadio'), "state", 'disabled')
+        app.SetParam(self.nametowidget('bottomFrame.unitsFrame.fahrRadio'), "state", 'disabled')
+        
+    def StopRoutine(self, buttonGUI):
+        #Update botão
+        app.SetParam(self.nametowidget('setTempFrame.entryField'), "state", 'normal')
+        app.SetParam(self.nametowidget('bottomFrame.unitsFrame.celsiusRadio'), "state", 'normal')
+        app.SetParam(self.nametowidget('bottomFrame.unitsFrame.fahrRadio'), "state", 'normal')
+        buttonGUI.ToggleText()
+        app.SetParam(buttonGUI.GetButton(), "state",  "normal")
+        
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.controller = controller
-        label = Label(self, text="This is page 1")
-        label.pack(side="top", fill="x", pady=10)
-        button = Button(self, text="Go to the start page",
-                           command=lambda: controller.show_frame("MainPage"))
-        button1 = Button(self, text="Go to page two",
-                           command=lambda: controller.show_frame("PageTwo"))
-        button.pack()
-        button1.pack()
+
+        self.isCelsius = BooleanVar()
+        self.isCelsius.set(True)
+
+        targetTempFrame = Frame(self, width=305, height= 54)#, bg='green')
+        reservTempsFrame = Frame(self, width=305, height= 54)#, bg='red')
+        setTempFrame = Frame(self, width=305, height= 54, name="setTempFrame")#, bg='yellow')
+        bottomFrame = Frame(self, width=305, height= 54, name="bottomFrame")#, bg='cyan')
+        
+        unitsFrame = Frame(bottomFrame, borderwidth=1, bg="black", width=225, height=54, name="unitsFrame")
+        tempFrame1 = Frame(reservTempsFrame, width=150, height=54)
+        tempFrame2 = Frame(reservTempsFrame, width=150, height=54)
+
+        setTempFrame.grid(column=0, row=0, pady=(7.5,1.5), padx=(7.5,7.5), sticky="news")
+        targetTempFrame.grid(column=0, row=1, pady=(1.5,1.5), padx=(7.5,7.5))
+        reservTempsFrame.grid(column=0, row=2, pady=(1.5,1.5), padx=(7.5,7.5))
+        bottomFrame.grid(column=0, row=3, pady=(1.5,7.5), padx=(7.5,7.5))
+        
+        unitsFrame.grid(column=0, row=0, padx=(0,5), sticky="news")
+        tempFrame1.grid(column=0, row=0, padx=(0,2.5), sticky="news")
+        tempFrame2.grid(column=1, row=0, padx=(2.5,0), sticky="news")
+
+        #configura comportamento dos frames
+        targetTempFrame.grid_rowconfigure(0, weight=1)
+        reservTempsFrame.grid_rowconfigure(0, weight=1)
+        setTempFrame.grid_rowconfigure(0, weight=1)
+        
+        reservTempsFrame.grid_columnconfigure(0, weight=1)
+        reservTempsFrame.grid_columnconfigure(1, weight=1)
+        targetTempFrame.grid_columnconfigure(0, weight=1)
+        setTempFrame.grid_columnconfigure(0, weight=1)
+        setTempFrame.grid_columnconfigure(1, weight=1)
+        
+        bottomFrame.grid_rowconfigure(0, weight=1)
+        bottomFrame.grid_columnconfigure(0, weight=1)
+        bottomFrame.grid_columnconfigure(1, weight=1)
+        unitsFrame.grid_rowconfigure(0, weight=1)
+        unitsFrame.grid_columnconfigure(0, weight=1)
+        unitsFrame.grid_columnconfigure(1, weight=1)
+        unitsFrame.grid_columnconfigure(2, weight=1)
+
+        bottomFrame.grid_propagate(False)
+        targetTempFrame.grid_propagate(False)
+        reservTempsFrame.grid_propagate(False)
+        setTempFrame.grid_propagate(False)
+        unitsFrame.grid_propagate(False)
+        tempFrame1.grid_propagate(False)
+        tempFrame2.grid_propagate(False)
+                
+        entryField = Entry(setTempFrame, width=3, font=font.Font(size=20), justify="right", name="entryField")
+        runButtonGUI = GUIButton("runButton", setTempFrame, text="Run", width=5, command=lambda: self.RunRoutine(runButtonGUI), name="runButton")
+        runButton = runButtonGUI.GetButton()
+        stopButton = Button(setTempFrame, text="Stop", width=5, command=lambda: self.StopRoutine(runButtonGUI), name="stopButton")
+        
+        unitVar = StringVar()
+        unitVar.set("°C")
+        
+        unitLabel = Label(setTempFrame, textvariable=unitVar, width=2)
+        targetText = Label(setTempFrame, text="Target\nTemperature", width=10)
+        
+        targetLabel1 = Label(targetTempFrame, text="Target Tank: asd")
+        tempLabel2 = Label(reservTempsFrame, text="Tank 1: asd")
+        tempLabel1 = Label(reservTempsFrame, text="Tank 2: asd")
+
+        targetText.grid(row=0, column=0, sticky='news')
+        entryField.grid(row=0, column=1, sticky='news')
+        unitLabel.grid(row=0, column=2, sticky='news')
+        runButton.grid(row=0, column=3, sticky='news')
+        stopButton.grid(row=0, column=4, sticky='news')
+
+        targetLabel1.grid(row=0, column=0, sticky='news')
+        tempLabel2.grid(row=0, column=0, sticky='news')
+        tempLabel1.grid(row=0, column=1, sticky='news')
+
+        unitsLabel = Label(unitsFrame, text="Temp.\nUnit:")
+        unitsLabel.grid(row=0,column=0, sticky="news")
+
+        celsiusRadio = Radiobutton(unitsFrame, text="Celsius\n[°C]", name="celsiusRadio", command=lambda: self.ChangeLabelUnit(unitVar, "°C"), width=6, variable=self.isCelsius, value=True, padx=3, pady=3, indicatoron=0)
+        fahrRadio = Radiobutton(unitsFrame, text="Fahrenheit\n[°F]", name="fahrRadio", command=lambda: self.ChangeLabelUnit(unitVar, "°F"), width=6, variable=self.isCelsius, value=False, padx=3, pady=3, indicatoron=0)
+
+        celsiusRadio.grid(row=0, column=1, sticky="news")
+        fahrRadio.grid(row=0, column=2, sticky="news")
+
+        celsiusRadio.select()
+
+        backButton = Button(bottomFrame, text="Voltar", width=6, command=lambda: controller.show_frame("MainPage"))
+        backButton.grid(row=0, column=1, sticky='news')
 
 if __name__ == "__main__":
     app = PyLabApp()
