@@ -93,6 +93,49 @@ class GUIButton:
     def GetButton(self):
         return self.button
 
+class GUIWarningWindow:
+    
+    def __init__(self, warningText, warningTitle="Attention!"):                    
+        self.warning = Tk()
+        self.warning.title(warningTitle)
+        self.warning.geometry("320x120+%d+%d" % (app.winfo_x(), app.winfo_y()+app.winfo_height()/5))
+        self.warning.lift()
+        self.warning.grid_columnconfigure(0, weight=1)
+        self.warning.grid_rowconfigure(0, weight=1)
+        self.warning.grid_rowconfigure(1, weight=1)
+        
+        self.buttonFrame = Frame(self.warning)
+        self.buttonFrame.grid(row=1, column=0, sticky="news")
+        self.buttonFrame.grid_columnconfigure(0, weight=1)
+        self.buttonFrame.grid_columnconfigure(1, weight=1)
+        self.buttonFrame.grid_rowconfigure(0, weight=1)
+                    
+        self.label = Label(self.warning, text=warningText,\
+                width=220, font=font.Font(weight="bold", size=10))
+        self.label.grid(row=0, column=0, sticky="news", padx=10, pady=10)
+        self.yesButton = Button(self.buttonFrame, text="Yes")
+        self.yesButton.grid(row=0, column=0, sticky="news")
+        self.noButton = Button(self.buttonFrame, text="No")
+        self.noButton.grid(row=0, column=1, sticky="news")
+        
+    def GetWidgets(self):
+        return {"root": self.warning, "label": self.label, \
+                "yesButton": self.yesButton, "noButton": self.noButton, \
+                "buttonFrame": self.buttonFrame}
+                
+    def GetWidget(self, widget):
+        widgets = self.GetWidgets()
+        return widgets[widget]
+        
+    def Destroy(self):
+        self.warning.destroy()
+        
+    def Hide(self):
+        self.warning.withdraw()
+        
+    def Show(self):
+        self.warning.deiconify()
+
 class MainPage(Frame):
  
     def ScaleButtonClick(self, button):
@@ -253,46 +296,37 @@ class SetTemperature(Frame):
     
     isRunning = False
     controller = None
+    warningOut = None
         
     def CheckBeforeReturn(self, buttonGUI):
         if self.isRunning:
             
             app.SetParam(self.nametowidget('bottomFrame.returnButton'), "state", 'disabled')
-            
-            appY=app.winfo_y()
-            print(appY)
-            
-            print(appY+appY/2)
-                        
-            warning = Tk()
-            warning.title("Attention!")
-            warning.geometry("320x120+%d+%d" % (app.winfo_x(), appY+appY/2))
-            warning.lift()
-            warning.grid_columnconfigure(0, weight=1)
-            warning.grid_rowconfigure(0, weight=1)
-            warning.grid_rowconfigure(1, weight=1)
-            buttonFrame = Frame(warning)
-            buttonFrame.grid(row=1, column=0, sticky="news")
-            buttonFrame.grid_columnconfigure(0, weight=1)
-            buttonFrame.grid_columnconfigure(1, weight=1)
-            buttonFrame.grid_rowconfigure(0, weight=1)
-                        
-            label = Label(warning, text="Routine is running and you should\n"\
-                    "stop it before going back.\nDo you want to stop it now?",\
-                    width=220, font=font.Font(weight="bold", size=10))
-            label.grid(row=0, column=0, sticky="news", padx=10, pady=10)
-            yesButton = Button(buttonFrame, text="Yes", command=lambda: self.HaltAndDestroy(warning, buttonGUI, True))
-            yesButton.grid(row=0, column=0, sticky="news")
-            noButton = Button(buttonFrame, text="No", command=lambda: self.HaltAndDestroy(warning, buttonGUI, False))
-            noButton.grid(row=0, column=1, sticky="news")
-            
+            if self.warningOut is None:
+                self.warningOut = GUIWarningWindow("Routine is running and you should\n"\
+                "stop it before going back.\nDo you want to stop it now?")
+                
+                widgets = self.warningOut.GetWidgets()
+                
+                app.SetParam(widgets["yesButton"], "command", lambda: self.HaltAndDestroy(buttonGUI, True))
+                app.SetParam(widgets["noButton"], "command", lambda: self.HaltAndDestroy(buttonGUI, False))
+            else:
+                self.warningOut.Show()
         else:
+            if self.warningOut is not None:
+                self.warningOut.Destroy()
+                self.warningOut = None
+                
             self.controller.show_frame("MainPage")
             
-    def HaltAndDestroy(self, warning, buttonGUI, halt):
+    def HaltAndDestroy(self, buttonGUI, halt):
         if halt:
             self.StopRoutine(buttonGUI)
-        warning.destroy()
+            self.warningOut.Destroy()
+            self.warningOut = None
+        else:
+            self.warningOut.Hide()
+        
         app.SetParam(self.nametowidget('bottomFrame.returnButton'), "state", 'normal')
         self.controller.show_frame("MainPage")             
         
@@ -311,12 +345,14 @@ class SetTemperature(Frame):
         
     def StopRoutine(self, buttonGUI):
         #Update botão
-        app.SetParam(self.nametowidget('setTempFrame.entryField'), "state", 'normal')
-        app.SetParam(self.nametowidget('bottomFrame.unitsFrame.celsiusRadio'), "state", 'normal')
-        app.SetParam(self.nametowidget('bottomFrame.unitsFrame.fahrRadio'), "state", 'normal')
-        buttonGUI.ToggleText()
-        app.SetParam(buttonGUI.GetButton(), "state",  "normal")
-        self.isRunning = False
+        
+        if self.isRunning:
+            app.SetParam(self.nametowidget('setTempFrame.entryField'), "state", 'normal')
+            app.SetParam(self.nametowidget('bottomFrame.unitsFrame.celsiusRadio'), "state", 'normal')
+            app.SetParam(self.nametowidget('bottomFrame.unitsFrame.fahrRadio'), "state", 'normal')
+            buttonGUI.ToggleText()
+            app.SetParam(buttonGUI.GetButton(), "state",  "normal")
+            self.isRunning = False
         
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
