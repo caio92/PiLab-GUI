@@ -43,7 +43,7 @@ class PyLabApp (Tk):
         container.grid()
 
         self.frames = {}
-        for F in (MainPage, GetTemperatures, SetTemperature):
+        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -202,8 +202,8 @@ class MainPage(Frame):
 
         #declara os botoes dos frames
         scaleButton = scaleButtonGUI.GetButton()
-        newRecipeButton = Button(recipesFrame, text="Editar\nReceita", width=5)
-        useRecipeButton = Button(recipesFrame, text="Executar\nReceita", width=5)
+        newRecipeButton = Button(recipesFrame, text="Criar\nReceita", width=5)
+        useRecipeButton = Button(recipesFrame, text="Executar\nou\nEditar\nReceita", width=5, command=lambda: controller.show_frame("RunEditRecipe"))
         adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5, command=lambda: controller.show_frame("SetTemperature"))
         measureTempButton = Button(temperatureFrame, text="Medir\nTemp.", width=5, command=lambda: controller.show_frame("GetTemperatures"))
         allButton = Button(allFrame, text="Rotina Completa")
@@ -460,6 +460,133 @@ class SetTemperature(Frame):
                      command=lambda: self.CheckBeforeReturn(runButtonGUI),\
                      name="returnButton")
         backButton.grid(row=0, column=1, sticky='news')
+
+class RunEditRecipe(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+
+        #define quatro frames iniciais
+        rowFrame1 = Frame (self, width=300, height=43)#, bg='cyan')
+        rowFrame2 = Frame (self, width=300, height=86)#, bg='red')
+        rowFrame3 = Frame (self, width=300, height=86)#, bg='green')
+        sortFrame = Frame (rowFrame2, width=200, height=86, \
+                           borderwidth=2, bg="black")
+        filterFrame = Frame(rowFrame2, width=100, height=86)
+        filmFrame = Frame(filterFrame, width=100, height=43)
+        catFrame = Frame(filterFrame, width=100, height=43)
+        recipeFrame = Frame(rowFrame1, width=300, height=43)
+        sortButtonsFrame = Frame(sortFrame, width=200, height=73)
+
+        #configura comportamento dos frames
+        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        rowFrame1.grid_rowconfigure(0, weight=1)
+        rowFrame1.grid_columnconfigure(0, weight=1)
+        
+        rowFrame2.grid_rowconfigure(0, weight=1)
+        rowFrame2.grid_columnconfigure(0, weight=1)
+        rowFrame2.grid_columnconfigure(1, weight=1)
+
+        rowFrame3.grid_rowconfigure(0, weight=1)
+        rowFrame3.grid_columnconfigure(0, weight=1)
+        rowFrame3.grid_columnconfigure(1, weight=1)
+        rowFrame3.grid_columnconfigure(2, weight=1)
+        
+        sortFrame.grid_columnconfigure(0, weight=1)
+        sortFrame.grid_rowconfigure(0, weight=1)
+        sortFrame.grid_rowconfigure(1, weight=1)
+        
+        filterFrame.grid_columnconfigure(0, weight=1)
+        filterFrame.grid_rowconfigure(0, weight=1)
+        filterFrame.grid_rowconfigure(1, weight=1)
+        
+        sortButtonsFrame.grid_columnconfigure(0, weight=1)
+        sortButtonsFrame.grid_columnconfigure(1, weight=1)
+        sortButtonsFrame.grid_rowconfigure(0, weight=1)
+        
+        catFrame.grid_columnconfigure(0, weight=1)
+        catFrame.grid_rowconfigure(0, weight=1)
+        catFrame.grid_rowconfigure(1, weight=1)
+        
+        filmFrame.grid_columnconfigure(0, weight=1)
+        filmFrame.grid_rowconfigure(0, weight=1)
+        filmFrame.grid_rowconfigure(1, weight=1)
+        
+        recipeFrame.grid_columnconfigure(0, weight=1)
+        recipeFrame.grid_rowconfigure(0, weight=1)
+        recipeFrame.grid_rowconfigure(1, weight=1)
+
+        sortFrame.grid_propagate(False)
+        filterFrame.grid_propagate(False)
+        sortButtonsFrame.grid_propagate(False)
+        recipeFrame.grid_propagate(False)
+        filmFrame.grid_propagate(False)
+        catFrame.grid_propagate(False)
+        rowFrame1.grid_propagate(False)
+        rowFrame2.grid_propagate(False)
+        rowFrame3.grid_propagate(False)
+
+        #coloca as frames no GRID
+        rowFrame1.grid(row=0, column=0, pady=(7.5,2.5), padx=7.5)
+        rowFrame2.grid(row=1, column=0, pady=(2.5,2.5), padx=7.5)
+        rowFrame3.grid(row=2, column=0, pady=(2.5,7.5), padx=7.5)
+        
+        recipeFrame.grid(row=0, column=0)#, pady=(2.25,7.5), padx=7.5)
+        
+        filterFrame.grid(row=0, column=0)
+        catFrame.grid(row=0, column=0)#, pady=(2.25,7.5), padx=7.5)
+        filmFrame.grid(row=1, column=0)#, pady=(2.25,7.5), padx=7.5)
+        
+        sortFrame.grid(row=0, column=1)#, pady=(2.25,7.5), padx=7.5)
+        sortButtonsFrame.grid(row=1, column=0)#, pady=(2.25,7.5), padx=7.5)
+        
+        catLabel = Label(catFrame, text="Category:")
+        filmLabel = Label(filmFrame, text="Film:")
+        recipeLabel = Label(recipeFrame, text="Recipe:")
+        sortLabel = Label(sortFrame, text="Sort Recipes:")
+        
+        catLabel.grid(row=0, column=0, sticky="news")
+        filmLabel.grid(row=0, column=0, sticky="news")
+        recipeLabel.grid(row=0, column=0, sticky="news")
+        sortLabel.grid(row=0, column=0, sticky="news")
+        
+        categories = ["All", "B&W", "C41", "E6"]
+        
+        films = ["All", "Tri-X", "Velvia"]
+
+        recipes = ["Caffenol Stand", "Pa-Rodinal 1:50", "Xtol 1:10"]
+
+        catVar = StringVar()
+        catVar.set(categories[0])
+        filmVar = StringVar()
+        filmVar.set(films[0])
+        recipeVar = StringVar()
+        recipeVar.set(recipes[0])
+
+        catList = OptionMenu(catFrame, catVar, *categories)
+        recipeList = OptionMenu(recipeFrame, recipeVar, *recipes)
+        filmList = OptionMenu(filmFrame, filmVar, *films)
+        
+        catList.grid(row=1, column=0, sticky="ew")
+        recipeList.grid(row=1, column=0, sticky="ew")
+        filmList.grid(row=1, column=0, sticky="ew")
+        
+        backButton = Button(rowFrame3, text="Voltar", width=6, \
+                     command=lambda: self.controller.show_frame("MainPage"))
+        backButton.grid(row=0, column=2, sticky='news')
+        runButton = Button(rowFrame3, text="Run Recipe", width=6)
+        runButton.grid(row=0, column=0, sticky='news')
+        editButton = Button(rowFrame3, text="Edit Recipe", width=6)
+        editButton.grid(row=0, column=1, sticky='news')
+        
+        azButton = Button(sortButtonsFrame, text="A to Z", width=6)
+        azButton.grid(row=0, column=0, sticky='nsew')
+        zaButton = Button(sortButtonsFrame, text="Z to A", width=6)
+        zaButton.grid(row=0, column=1, sticky='nsew')
 
 if __name__ == "__main__":
     app = PyLabApp()
