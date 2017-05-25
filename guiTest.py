@@ -47,7 +47,7 @@ class PyLabApp (Tk):
         container.grid()
 
         self.frames = {}
-        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe, Agitation):
+        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe, Agitation, NewAgitationCheck):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -205,7 +205,7 @@ class MainPage(Frame):
 
         #declara os botoes dos frames
         scaleButton = scaleButtonGUI.GetButton()
-        newRecipeButton = Button(recipesFrame, text="Criar\nReceita", width=5, command=lambda: controller.show_frame("Agitation"))
+        newRecipeButton = Button(recipesFrame, text="Criar\nReceita", width=5, command=lambda: controller.show_frame("NewAgitationCheck"))
         useRecipeButton = Button(recipesFrame, text="Executar\nou\nEditar\nReceita", width=5, command=lambda: controller.show_frame("RunEditRecipe"))
         adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5, command=lambda: controller.show_frame("SetTemperature"))
         measureTempButton = Button(temperatureFrame, text="Medir\nTemp.", width=5, command=lambda: controller.show_frame("GetTemperatures"))
@@ -679,7 +679,7 @@ class Agitation(Frame):
         buttonsFrame.grid(column=1, row=0, sticky="news")
         
         backButton = Button(buttonsFrame, text="Voltar", height=1, \
-                     command=lambda: self.controller.show_frame("MainPage"))
+                     command=lambda: controller.show_frame("NewAgitationCheck"))
         backButton.grid(row=3, column=0, sticky='news')
         saveButton = Button(buttonsFrame, text="Save", height=1)
         saveButton.grid(row=1, column=0, sticky='news')
@@ -705,6 +705,36 @@ class Agitation(Frame):
             
         patternsBox.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=patternsBox.yview)
+
+class NewAgitationCheck(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        
+        #define quatro frames iniciais
+        rowFrame1 = Frame (self, width=305, height=225)#, bg='cyan')
+
+        #configura comportamento dos frames
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        rowFrame1.grid_columnconfigure(0, weight=1)
+        rowFrame1.grid_rowconfigure(0, weight=1)
+        rowFrame1.grid_rowconfigure(1, weight=1)
+        rowFrame1.grid_rowconfigure(2, weight=1)
+
+        rowFrame1.grid_propagate(False)
+        
+        rowFrame1.grid(column=0, row=0, sticky="news", pady=(7.5, 7.5), padx=7.5)
+        
+        backButton = Button(rowFrame1, text="Voltar", height=1, \
+                     command=lambda: self.controller.show_frame("MainPage"))
+        backButton.grid(row=2, column=0, sticky='news')
+        agitationButton = Button(rowFrame1, text="Create or Edit Agitation Patterns", height=1, \
+                     command=lambda: controller.show_frame("Agitation"))
+        agitationButton.grid(row=0, column=0, sticky='news')
+        recipeButton = Button(rowFrame1, text="Create New Recipe", height=1)
+        recipeButton.grid(row=1, column=0, sticky='news')
         
 
 if __name__ == "__main__":
