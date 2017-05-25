@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from tkinter import *
 from tkinter import font
-from tkinter import messagebox
+#from tkinter import messagebox
+from tkinter.ttk import Combobox
 
 import pdb
 
@@ -32,6 +33,9 @@ class PyLabApp (Tk):
 
     def __init__(self, *args, **kwargs):
         Tk.__init__(self, *args, **kwargs)
+        
+        global titleFont
+        titleFont = font.Font(size=10, weight="bold")
 
         self.title("Layout Prototype")
         self.geometry("320x240")
@@ -43,7 +47,7 @@ class PyLabApp (Tk):
         container.grid()
 
         self.frames = {}
-        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe):
+        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe, Agitation):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -154,7 +158,6 @@ class MainPage(Frame):
             button.ToggleText()
             app.SetParam(button.GetButton(), "anchor", 'center')
 
-
     def UpdateScale(self, button):
         #funcao que faz a leitura do sensor aqui!!
         pass
@@ -202,7 +205,7 @@ class MainPage(Frame):
 
         #declara os botoes dos frames
         scaleButton = scaleButtonGUI.GetButton()
-        newRecipeButton = Button(recipesFrame, text="Criar\nReceita", width=5)
+        newRecipeButton = Button(recipesFrame, text="Criar\nReceita", width=5, command=lambda: controller.show_frame("Agitation"))
         useRecipeButton = Button(recipesFrame, text="Executar\nou\nEditar\nReceita", width=5, command=lambda: controller.show_frame("RunEditRecipe"))
         adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5, command=lambda: controller.show_frame("SetTemperature"))
         measureTempButton = Button(temperatureFrame, text="Medir\nTemp.", width=5, command=lambda: controller.show_frame("GetTemperatures"))
@@ -330,7 +333,6 @@ class SetTemperature(Frame):
         app.SetParam(self.nametowidget('bottomFrame.returnButton'), "state", 'normal')
         self.controller.show_frame("MainPage")             
         
-    
     def ChangeLabelUnit(self, textVar, unit):
         textVar.set(unit)
         
@@ -465,18 +467,20 @@ class RunEditRecipe(Frame):
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.controller = controller
+        
+        rowWidth = [50, 110, 55]
 
         #define quatro frames iniciais
-        rowFrame1 = Frame (self, width=300, height=43)#, bg='cyan')
-        rowFrame2 = Frame (self, width=300, height=86)#, bg='red')
-        rowFrame3 = Frame (self, width=300, height=86)#, bg='green')
-        sortFrame = Frame (rowFrame2, width=200, height=86, \
-                           borderwidth=2, bg="black")
-        filterFrame = Frame(rowFrame2, width=100, height=86)
-        filmFrame = Frame(filterFrame, width=100, height=43)
-        catFrame = Frame(filterFrame, width=100, height=43)
-        recipeFrame = Frame(rowFrame1, width=300, height=43)
-        sortButtonsFrame = Frame(sortFrame, width=200, height=73)
+        rowFrame1 = Frame (self, width=300, height=rowWidth[0])#, bg='cyan')
+        rowFrame2 = Frame (self, width=300, height=rowWidth[1])#, bg='red')
+        rowFrame3 = Frame (self, width=300, height=rowWidth[2])#, bg='green')
+        sortFrame = Frame (rowFrame2, width=200, height=rowWidth[1])#, bd=5)#\
+                           #borderwidth=1, bg="black")
+        filterFrame = Frame(rowFrame2, width=100, height=rowWidth[1])
+        filmFrame = Frame(filterFrame, width=100, height=rowWidth[1]/2)
+        catFrame = Frame(filterFrame, width=100, height=rowWidth[1]/2)
+        recipeFrame = Frame(rowFrame1, width=300, height=rowWidth[0])
+        sortButtonsFrame = Frame(sortFrame, width=200, height=rowWidth[1]-25)
 
         #configura comportamento dos frames
         self.grid_rowconfigure(2, weight=1)
@@ -538,16 +542,18 @@ class RunEditRecipe(Frame):
         recipeFrame.grid(row=0, column=0)#, pady=(2.25,7.5), padx=7.5)
         
         filterFrame.grid(row=0, column=0)
-        catFrame.grid(row=0, column=0)#, pady=(2.25,7.5), padx=7.5)
-        filmFrame.grid(row=1, column=0)#, pady=(2.25,7.5), padx=7.5)
+        catFrame.grid(row=1, column=0)#, pady=(2.25,7.5), padx=7.5)
+        filmFrame.grid(row=0, column=0)#, pady=(2.25,7.5), padx=7.5)
         
         sortFrame.grid(row=0, column=1)#, pady=(2.25,7.5), padx=7.5)
         sortButtonsFrame.grid(row=1, column=0)#, pady=(2.25,7.5), padx=7.5)
         
-        catLabel = Label(catFrame, text="Category:")
-        filmLabel = Label(filmFrame, text="Film:")
-        recipeLabel = Label(recipeFrame, text="Recipe:")
-        sortLabel = Label(sortFrame, text="Sort Recipes:")
+        listFont = font.Font(size=11)
+        
+        catLabel = Label(catFrame, text="Category:", font=titleFont)
+        filmLabel = Label(filmFrame, text="Film:", font=titleFont)
+        recipeLabel = Label(recipeFrame, text="Recipe:", font=titleFont)
+        sortLabel = Label(sortFrame, text="Sort Recipes:", font=titleFont)
         
         catLabel.grid(row=0, column=0, sticky="news")
         filmLabel.grid(row=0, column=0, sticky="news")
@@ -556,7 +562,7 @@ class RunEditRecipe(Frame):
         
         categories = ["All", "B&W", "C41", "E6"]
         
-        films = ["All", "Tri-X", "Velvia"]
+        films = ["All", "Tri-X", "Velvia", "All", "Tri-X", "Velvia", "All", "Tri-X", "Velvia", "All", "Tri-X", "Velvia", "All", "Tri-X", "Velvia"]
 
         recipes = ["Caffenol Stand", "Pa-Rodinal 1:50", "Xtol 1:10"]
 
@@ -566,27 +572,140 @@ class RunEditRecipe(Frame):
         filmVar.set(films[0])
         recipeVar = StringVar()
         recipeVar.set(recipes[0])
-
-        catList = OptionMenu(catFrame, catVar, *categories)
-        recipeList = OptionMenu(recipeFrame, recipeVar, *recipes)
-        filmList = OptionMenu(filmFrame, filmVar, *films)
         
-        catList.grid(row=1, column=0, sticky="ew")
-        recipeList.grid(row=1, column=0, sticky="ew")
-        filmList.grid(row=1, column=0, sticky="ew")
+        recipeList = Combobox(recipeFrame, values=recipes, textvariable = recipeVar, font=listFont)
         
-        backButton = Button(rowFrame3, text="Voltar", width=6, \
+        filmList = Combobox(filmFrame, values=films, textvariable = filmVar, height=7, font=listFont)
+        catList = Combobox(catFrame, values=categories, textvariable = catVar, height=4, font=listFont)
+        #catList = OptionMenu(catFrame, catVar, *categories)
+        #recipeList = OptionMenu(recipeFrame, recipeVar, *recipes)
+        #filmList = OptionMenu(filmFrame, filmVar, *films)
+        
+        catList.grid(row=1, column=0, sticky="nsew")
+        recipeList.grid(row=1, column=0, sticky="nsew")
+        filmList.grid(row=1, column=0, sticky="nsew")
+        
+        backButton = Button(rowFrame3, text="Voltar", width=1, \
                      command=lambda: self.controller.show_frame("MainPage"))
         backButton.grid(row=0, column=2, sticky='news')
-        runButton = Button(rowFrame3, text="Run Recipe", width=6)
+        runButton = Button(rowFrame3, text="Run Recipe", width=1)
         runButton.grid(row=0, column=0, sticky='news')
-        editButton = Button(rowFrame3, text="Edit Recipe", width=6)
+        editButton = Button(rowFrame3, text="Edit Recipe", width=1)
         editButton.grid(row=0, column=1, sticky='news')
         
-        azButton = Button(sortButtonsFrame, text="A to Z", width=6)
+        azButton = Button(sortButtonsFrame, text="A to Z", width=1)
         azButton.grid(row=0, column=0, sticky='nsew')
-        zaButton = Button(sortButtonsFrame, text="Z to A", width=6)
+        zaButton = Button(sortButtonsFrame, text="Z to A", width=1)
         zaButton.grid(row=0, column=1, sticky='nsew')
+
+class Agitation(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        
+        rowWidth = [43, 43, 133]
+
+        #define quatro frames iniciais
+        rowFrame1 = Frame (self, width=305, height=rowWidth[0], bg='cyan')
+        rowFrame2 = Frame (self, width=305, height=rowWidth[1], bg='red')
+        rowFrame3 = Frame (self, width=305, height=rowWidth[2], bg='green')
+         
+        #requiredFrame = Frame (rowFrame1, width=200, height=rowWidth[1])#, bd=5)
+        #optionalFrame = Frame(rowFrame2, width=100, height=rowWidth[1])
+        patternsFrame = Frame(rowFrame3, width=244, height=rowWidth[1])
+        buttonsFrame = Frame(rowFrame3, width=61, height=rowWidth[1])
+
+        #configura comportamento dos frames
+        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        rowFrame1.grid_rowconfigure(0, weight=1)
+        rowFrame1.grid_rowconfigure(1, weight=1)
+        rowFrame1.grid_columnconfigure(0, weight=1)
+        rowFrame1.grid_columnconfigure(1, weight=1)
+        
+        rowFrame2.grid_rowconfigure(0, weight=1)
+        rowFrame2.grid_rowconfigure(1, weight=1)
+        rowFrame2.grid_columnconfigure(0, weight=1)
+        rowFrame2.grid_columnconfigure(1, weight=1)
+
+        rowFrame3.grid_rowconfigure(0, weight=1)
+        rowFrame3.grid_columnconfigure(0, weight=1)
+        rowFrame3.grid_columnconfigure(1, weight=1)
+        
+        patternsFrame.grid_columnconfigure(0, weight=1)
+        patternsFrame.grid_columnconfigure(1, weight=1)
+        patternsFrame.grid_rowconfigure(0, weight=1)
+        patternsFrame.grid_rowconfigure(1, weight=1)
+        
+        buttonsFrame.grid_columnconfigure(0, weight=1)
+        buttonsFrame.grid_rowconfigure(0, weight=1)
+        buttonsFrame.grid_rowconfigure(1, weight=1)
+        buttonsFrame.grid_rowconfigure(2, weight=1)
+        buttonsFrame.grid_rowconfigure(3, weight=1)
+
+        buttonsFrame.grid_propagate(False)
+        patternsFrame.grid_propagate(False)
+        rowFrame3.grid_propagate(False)
+        rowFrame2.grid_propagate(False)
+        rowFrame1.grid_propagate(False)
+        
+        rowFrame1.grid(column=0, row=0, sticky="news", pady=(7.5, 1.5), padx=7.5)
+        rowFrame2.grid(column=0, row=1, sticky="news", pady=(1.5, 1.5), padx=7.5)
+        rowFrame3.grid(column=0, row=2, sticky="news", pady=(1.5, 7.5), padx=7.5)
+        
+        durationEntry = Entry(rowFrame1)
+        intervalEntry = Entry(rowFrame1)
+        repetitonsEntry = Entry(rowFrame2)
+        totalTimeEntry = Entry(rowFrame2)
+        
+        durationEntry.grid(row=1, column=0, sticky="news")
+        intervalEntry.grid(row=1, column=1, sticky="news")
+        repetitonsEntry.grid(row=1, column=0, sticky="news")
+        totalTimeEntry.grid(row=1, column=1, sticky="news")
+        
+        durationLabel = Label(rowFrame1, text="Duration [s]", font=titleFont)
+        intervalLabel = Label(rowFrame1, text="Interval [s]", font=titleFont)
+        repetitonsLabel = Label(rowFrame2, text="Repetitions", font=titleFont)
+        totalTimeLabel = Label(rowFrame2, text="Total Time [s]", font=titleFont)
+        
+        durationLabel.grid(row=0, column=0, sticky="news")
+        intervalLabel.grid(row=0, column=1, sticky="news")
+        repetitonsLabel.grid(row=0, column=0, sticky="news")
+        totalTimeLabel.grid(row=0, column=1, sticky="news")
+        
+        buttonsFrame.grid(column=1, row=0, sticky="news")
+        
+        backButton = Button(buttonsFrame, text="Voltar", height=1, \
+                     command=lambda: self.controller.show_frame("MainPage"))
+        backButton.grid(row=3, column=0, sticky='news')
+        saveButton = Button(buttonsFrame, text="Save", height=1)
+        saveButton.grid(row=1, column=0, sticky='news')
+        continueButton = Button(buttonsFrame, text="Continue", height=1)
+        continueButton.grid(row=0, column=0, sticky='news')
+        deleteButton = Button(buttonsFrame, text="Delete", height=1)
+        deleteButton.grid(row=2, column=0, sticky='news')
+        
+        patternsFrame.grid(row=0, column=0, sticky="news")
+        patternsBox = Listbox(patternsFrame, width=20)
+        patternsBoxLabel = Label(patternsFrame, text="Patterns", font=titleFont, height=5)
+        
+        patternsBoxLabel.grid(row=0, column=0, sticky="news")
+        patternsBox.grid(row=1, column=0, sticky="news", padx=0)
+        
+        patterns = ["one", "two", "three", "four", "two", "three", "four", "two", "three", "four"]
+        
+        for item in patterns:
+            patternsBox.insert(END, item)
+            
+        scrollbar = Scrollbar(patternsFrame)
+        scrollbar.grid(row=1, column=1, sticky="news", padx=(0,5))
+            
+        patternsBox.config(yscrollcommand=scrollbar.set)
+        scrollbar.config(command=patternsBox.yview)
+        
 
 if __name__ == "__main__":
     app = PyLabApp()
