@@ -47,7 +47,7 @@ class PyLabApp (Tk):
         container.grid()
 
         self.frames = {}
-        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe, Agitation, NewAgitationCheck):
+        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe, Agitation, NewAgitationCheck, Recipes):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -603,17 +603,17 @@ class Agitation(Frame):
         Frame.__init__(self, parent)
         self.controller = controller
         
-        rowWidth = [43, 43, 133]
+        rowHeight = [43, 43, 133]
 
         #define quatro frames iniciais
-        rowFrame1 = Frame (self, width=305, height=rowWidth[0], bg='cyan')
-        rowFrame2 = Frame (self, width=305, height=rowWidth[1], bg='red')
-        rowFrame3 = Frame (self, width=305, height=rowWidth[2], bg='green')
+        rowFrame1 = Frame (self, width=305, height=rowHeight[0])#, bg='cyan')
+        rowFrame2 = Frame (self, width=305, height=rowHeight[1])#, bg='red')
+        rowFrame3 = Frame (self, width=305, height=rowHeight[2])#, bg='green')
          
-        #requiredFrame = Frame (rowFrame1, width=200, height=rowWidth[1])#, bd=5)
-        #optionalFrame = Frame(rowFrame2, width=100, height=rowWidth[1])
-        patternsFrame = Frame(rowFrame3, width=244, height=rowWidth[1])
-        buttonsFrame = Frame(rowFrame3, width=61, height=rowWidth[1])
+        patternsFrame = Frame(rowFrame3, width=244, height=rowHeight[2])
+        buttonsFrame = Frame(rowFrame3, width=61, height=rowHeight[2])
+        nameFrame = Frame(patternsFrame, width=244, height=rowHeight[1])
+        pBoxFrame = Frame(patternsFrame, width=244, height=rowHeight[2]-rowHeight[1])
 
         #configura comportamento dos frames
         self.grid_rowconfigure(2, weight=1)
@@ -639,15 +639,26 @@ class Agitation(Frame):
         patternsFrame.grid_columnconfigure(1, weight=1)
         patternsFrame.grid_rowconfigure(0, weight=1)
         patternsFrame.grid_rowconfigure(1, weight=1)
+        #patternsFrame.grid_rowconfigure(2, weight=1)
         
         buttonsFrame.grid_columnconfigure(0, weight=1)
         buttonsFrame.grid_rowconfigure(0, weight=1)
         buttonsFrame.grid_rowconfigure(1, weight=1)
         buttonsFrame.grid_rowconfigure(2, weight=1)
         buttonsFrame.grid_rowconfigure(3, weight=1)
+        
+        nameFrame.grid_rowconfigure(1, weight=1)
+        nameFrame.grid_rowconfigure(0, weight=1)
+        nameFrame.grid_columnconfigure(0, weight=1)
+        
+        #pBoxFrame.grid_rowconfigure(1, weight=1)
+        pBoxFrame.grid_rowconfigure(0, weight=1)
+        pBoxFrame.grid_columnconfigure(0, weight=1)
 
         buttonsFrame.grid_propagate(False)
         patternsFrame.grid_propagate(False)
+        nameFrame.grid_propagate(False)
+        pBoxFrame.grid_propagate(False)
         rowFrame3.grid_propagate(False)
         rowFrame2.grid_propagate(False)
         rowFrame1.grid_propagate(False)
@@ -689,19 +700,25 @@ class Agitation(Frame):
         deleteButton.grid(row=2, column=0, sticky='news')
         
         patternsFrame.grid(row=0, column=0, sticky="news")
-        patternsBox = Listbox(patternsFrame, width=20)
-        patternsBoxLabel = Label(patternsFrame, text="Patterns", font=titleFont, height=5)
+        nameFrame.grid(row=0, column=0, sticky="news")
+        pBoxFrame.grid(row=1, column=0, sticky="news")
         
-        patternsBoxLabel.grid(row=0, column=0, sticky="news")
-        patternsBox.grid(row=1, column=0, sticky="news", padx=0)
+        nameLabel = Label(nameFrame, text="Agitation Name", font=titleFont)
+        nameEntry = Entry(nameFrame)
+        
+        nameLabel.grid(row=0, column=0, sticky="news", padx=(0,3))
+        nameEntry.grid(row=1, column=0, sticky="news", padx=(0,3))
+        
+        patternsBox = Listbox(pBoxFrame, width=15)
+        patternsBox.grid(row=0, column=0, sticky="news", padx=0)
         
         patterns = ["one", "two", "three", "four", "two", "three", "four", "two", "three", "four"]
         
         for item in patterns:
             patternsBox.insert(END, item)
             
-        scrollbar = Scrollbar(patternsFrame)
-        scrollbar.grid(row=1, column=1, sticky="news", padx=(0,5))
+        scrollbar = Scrollbar(pBoxFrame, width=40)
+        scrollbar.grid(row=0, column=1, sticky="news", padx=(0,5))
             
         patternsBox.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=patternsBox.yview)
@@ -733,9 +750,140 @@ class NewAgitationCheck(Frame):
         agitationButton = Button(rowFrame1, text="Create or Edit Agitation Patterns", height=1, \
                      command=lambda: controller.show_frame("Agitation"))
         agitationButton.grid(row=0, column=0, sticky='news')
-        recipeButton = Button(rowFrame1, text="Create New Recipe", height=1)
+        recipeButton = Button(rowFrame1, text="Create New Recipe", height=1, \
+                     command=lambda: controller.show_frame("Recipes"))
         recipeButton.grid(row=1, column=0, sticky='news')
+
+class Recipes(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
         
+        rowHeight = [43, 43, 133]
+
+        #define quatro frames iniciais
+        rowFrame1 = Frame (self, width=305, height=rowHeight[0])#, bg='cyan')
+        rowFrame2 = Frame (self, width=305, height=rowHeight[1])#, bg='red')
+        rowFrame3 = Frame (self, width=305, height=rowHeight[2])#, bg='green')
+         
+        patternsFrame = Frame(rowFrame3, width=244, height=rowHeight[2])
+        buttonsFrame = Frame(rowFrame3, width=61, height=rowHeight[2])
+        nameFrame = Frame(patternsFrame, width=244, height=rowHeight[1])
+        pBoxFrame = Frame(patternsFrame, width=244, height=rowHeight[2]-rowHeight[1])
+
+        #configura comportamento dos frames
+        self.grid_rowconfigure(2, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        rowFrame1.grid_rowconfigure(0, weight=1)
+        rowFrame1.grid_rowconfigure(1, weight=1)
+        rowFrame1.grid_columnconfigure(0, weight=1)
+        rowFrame1.grid_columnconfigure(1, weight=1)
+        
+        rowFrame2.grid_rowconfigure(0, weight=1)
+        rowFrame2.grid_rowconfigure(1, weight=1)
+        rowFrame2.grid_columnconfigure(0, weight=1)
+        rowFrame2.grid_columnconfigure(1, weight=1)
+        rowFrame2.grid_columnconfigure(2, weight=1)
+
+        rowFrame3.grid_rowconfigure(0, weight=1)
+        rowFrame3.grid_columnconfigure(0, weight=1)
+        rowFrame3.grid_columnconfigure(1, weight=1)
+        
+        patternsFrame.grid_columnconfigure(0, weight=1)
+        patternsFrame.grid_columnconfigure(1, weight=1)
+        patternsFrame.grid_rowconfigure(0, weight=1)
+        patternsFrame.grid_rowconfigure(1, weight=1)
+        #patternsFrame.grid_rowconfigure(2, weight=1)
+        
+        buttonsFrame.grid_columnconfigure(0, weight=1)
+        buttonsFrame.grid_rowconfigure(0, weight=1)
+        buttonsFrame.grid_rowconfigure(1, weight=1)
+        buttonsFrame.grid_rowconfigure(2, weight=1)
+        buttonsFrame.grid_rowconfigure(3, weight=1)
+        
+        nameFrame.grid_rowconfigure(1, weight=1)
+        nameFrame.grid_rowconfigure(0, weight=1)
+        nameFrame.grid_columnconfigure(0, weight=1)
+        
+        #pBoxFrame.grid_rowconfigure(1, weight=1)
+        pBoxFrame.grid_rowconfigure(0, weight=1)
+        pBoxFrame.grid_columnconfigure(0, weight=1)
+
+        buttonsFrame.grid_propagate(False)
+        patternsFrame.grid_propagate(False)
+        nameFrame.grid_propagate(False)
+        pBoxFrame.grid_propagate(False)
+        rowFrame3.grid_propagate(False)
+        rowFrame2.grid_propagate(False)
+        rowFrame1.grid_propagate(False)
+        
+        rowFrame1.grid(column=0, row=0, sticky="news", pady=(7.5, 1.5), padx=7.5)
+        rowFrame2.grid(column=0, row=1, sticky="news", pady=(1.5, 1.5), padx=7.5)
+        rowFrame3.grid(column=0, row=2, sticky="news", pady=(1.5, 7.5), padx=7.5)
+        
+        durationEntry = Entry(rowFrame1)
+        tempEntry = Entry(rowFrame1)
+        catEntry = Combobox(rowFrame2)
+        filmEntry = Combobox(rowFrame2)
+        agitationEntry = Combobox(rowFrame2)
+        
+        durationEntry.grid(row=1, column=0, sticky="news")
+        tempEntry.grid(row=1, column=1, sticky="news")
+        catEntry.grid(row=1, column=0, sticky="news")
+        filmEntry.grid(row=1, column=1, sticky="news")
+        agitationEntry.grid(row=1, column=2, sticky="news")
+        
+        durationLabel = Label(rowFrame1, text="Duration [m]", font=titleFont)
+        tempLabel = Label(rowFrame1, text="Temperature [C]", font=titleFont)
+        catLabel = Label(rowFrame2, text="Category", font=titleFont)
+        filmLabel = Label(rowFrame2, text="Film", font=titleFont)
+        agitationLabel = Label(rowFrame2, text="Agitation", font=titleFont)
+        
+        durationLabel.grid(row=0, column=0, sticky="news")
+        tempLabel.grid(row=0, column=1, sticky="news")
+        catLabel.grid(row=0, column=0, sticky="news")
+        filmLabel.grid(row=0, column=1, sticky="news")
+        agitationLabel.grid(row=0, column=2, sticky="news")
+        
+        buttonsFrame.grid(column=1, row=0, sticky="news")
+        
+        backButton = Button(buttonsFrame, text="Voltar", height=1, \
+                     command=lambda: controller.show_frame("NewAgitationCheck"))
+        backButton.grid(row=3, column=0, sticky='news')
+        saveButton = Button(buttonsFrame, text="Save", height=1)
+        saveButton.grid(row=1, column=0, sticky='news')
+        continueButton = Button(buttonsFrame, text="Continue", height=1)
+        continueButton.grid(row=0, column=0, sticky='news')
+        deleteButton = Button(buttonsFrame, text="Delete", height=1)
+        deleteButton.grid(row=2, column=0, sticky='news')
+        
+        patternsFrame.grid(row=0, column=0, sticky="news")
+        nameFrame.grid(row=0, column=0, sticky="news")
+        pBoxFrame.grid(row=1, column=0, sticky="news")
+        
+        nameLabel = Label(nameFrame, text="Recipe Name", font=titleFont)
+        nameEntry = Entry(nameFrame)
+        
+        nameLabel.grid(row=0, column=0, sticky="news", padx=(0,3))
+        nameEntry.grid(row=1, column=0, sticky="news", padx=(0,3))
+        
+        patternsBox = Listbox(pBoxFrame, width=15)
+        patternsBox.grid(row=0, column=0, sticky="news", padx=0)
+        
+        patterns = ["one", "two", "three", "four", "two", "three", "four", "two", "three", "four"]
+        
+        for item in patterns:
+            patternsBox.insert(END, item)
+            
+        scrollbar = Scrollbar(pBoxFrame, width=40)
+        scrollbar.grid(row=0, column=1, sticky="news", padx=(0,5))
+            
+        patternsBox.config(yscrollcommand=scrollbar.set)
+        scrollbar.config(command=patternsBox.yview)
+
 
 if __name__ == "__main__":
     app = PyLabApp()
