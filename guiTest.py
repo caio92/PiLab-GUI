@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from tkinter import *
 from tkinter import font
-#from tkinter import messagebox
 from tkinter.ttk import Combobox
+import os
+import json
 
 import pdb
 
@@ -11,7 +12,93 @@ scaleReadingText = "\n\n Leitura atual:\nMUITOS KGs"
 onOffText = ["Turn\nOn", "Turn\nOff"]
 runText = ["Run", "Running"]
 
+recipesDir = "./LabPi/recipes.conf"
+agitationDir = "./LabPi/agitation.conf"
+
+#directories = {"recipes": recipesDir, "agitation": agitationDir}
+directories = [recipesDir, agitationDir]
+
+class AgitationPattern:
+    def __init__(self, dictInfo):#name, duration, interval, repetitions = None, totalTime = None):
+        self.dictInfo = dictInfo
+        #self.name = name
+        #self.duration = duration
+        #self.interval = interval
+        
+        #if repetitions is not None:
+            #self.repetitions = repetitions
+        #if totalTime is not None:
+            #self.totalTime = totalTime
+            
+    #def get_agitation(self):
+        #agitationDict = {
+                        #"duration": self.duration,
+                        #"name": self.name,
+                        #"interval": self.interval,
+                      #}
+                      
+        #if self.repetitions is not None:
+            #agitationDict.update({"repetitions": self.repetitions})
+        #if self.totalTime is not None:
+            #agitationDict.update({"totalTime": totalTime})
+                      
+        #return agitationDict
+
+class Recipe:
+    def __init__(self, agitation, recipeInfo):# name, category, film, temperature):
+        self.agitation = agitation
+        self.recipe = recipeInfo
+        #self.name = name
+        #self.film = film
+        #self.category = category
+        #self.temperature = temperature
+        
+    #def get_recipe(self):
+        #recipteDict = {
+                        #"agitation": self.agitation,
+                        #"name": self.name,
+                        #"film": self.film,
+                        #"category": self.category,
+                        #"temperature": self.temperature
+                      #}
+                      
+        #return recipteDict
+
 class PyLabApp (Tk):
+    
+    def check_files(self):
+        for directory in directories:
+            
+            direct = os.path.dirname(directory)
+            if not os.path.exists(direct):
+                os.mkdir(direct)
+                
+    def write_json(self, dataType, info):
+        app.check_files()
+        
+        if dataType == "recipe":
+            directory = recipesDir
+        else: 
+            directory = agitationDir
+            
+        with open(directory, 'a') as jsonFile:
+            json.dump(info, jsonFile, sort_keys=True, indent=4)
+            jsonFile.write('\n')
+            jsonFile.close()
+            
+    def read_json(self, dataType):
+        app.check_files()
+
+        if dataType == "recipe":
+            directory = recipesDir
+        else: 
+            directory = agitationDir
+            
+        with open(directory, 'r') as jsonFile:
+            data = json.load(jsonFile)
+            jsonFile.close()
+            
+            return data
 
     def show_frame(self, page_name):
             '''Show a frame for the given page name'''
@@ -33,6 +120,11 @@ class PyLabApp (Tk):
 
     def __init__(self, *args, **kwargs):
         Tk.__init__(self, *args, **kwargs)
+        
+        self.agitationPatterns = []
+        self.recipes = []
+        self.categories = []
+        self.films = []
         
         global titleFont
         titleFont = font.Font(size=10, weight="bold")
@@ -600,6 +692,7 @@ class RunEditRecipe(Frame):
 
 class Agitation(Frame):
     def __init__(self, parent, controller):
+        
         Frame.__init__(self, parent)
         self.controller = controller
         
@@ -667,24 +760,30 @@ class Agitation(Frame):
         rowFrame2.grid(column=0, row=1, sticky="news", pady=(1.5, 1.5), padx=7.5)
         rowFrame3.grid(column=0, row=2, sticky="news", pady=(1.5, 7.5), padx=7.5)
         
-        durationEntry = Entry(rowFrame1)
-        intervalEntry = Entry(rowFrame1)
-        repetitonsEntry = Entry(rowFrame2)
-        totalTimeEntry = Entry(rowFrame2)
+        self.duration = StringVar()
+        self.interval = StringVar()
+        self.repetitions = StringVar()
+        self.totalTime = StringVar()
+        self.name = StringVar()
+        
+        durationEntry = Entry(rowFrame1, textvar = self.duration)
+        intervalEntry = Entry(rowFrame1, textvar = self.interval)
+        repetitionsEntry = Entry(rowFrame2, textvar = self.repetitions)
+        totalTimeEntry = Entry(rowFrame2, textvar = self.totalTime)
         
         durationEntry.grid(row=1, column=0, sticky="news")
         intervalEntry.grid(row=1, column=1, sticky="news")
-        repetitonsEntry.grid(row=1, column=0, sticky="news")
+        repetitionsEntry.grid(row=1, column=0, sticky="news")
         totalTimeEntry.grid(row=1, column=1, sticky="news")
         
         durationLabel = Label(rowFrame1, text="Duration [s]", font=titleFont)
         intervalLabel = Label(rowFrame1, text="Interval [s]", font=titleFont)
-        repetitonsLabel = Label(rowFrame2, text="Repetitions", font=titleFont)
+        repetitionsLabel = Label(rowFrame2, text="Repetitions", font=titleFont)
         totalTimeLabel = Label(rowFrame2, text="Total Time [s]", font=titleFont)
         
         durationLabel.grid(row=0, column=0, sticky="news")
         intervalLabel.grid(row=0, column=1, sticky="news")
-        repetitonsLabel.grid(row=0, column=0, sticky="news")
+        repetitionsLabel.grid(row=0, column=0, sticky="news")
         totalTimeLabel.grid(row=0, column=1, sticky="news")
         
         buttonsFrame.grid(column=1, row=0, sticky="news")
@@ -692,7 +791,8 @@ class Agitation(Frame):
         backButton = Button(buttonsFrame, text="Voltar", height=1, \
                      command=lambda: controller.show_frame("NewAgitationCheck"))
         backButton.grid(row=3, column=0, sticky='news')
-        saveButton = Button(buttonsFrame, text="Save", height=1)
+        saveButton = Button(buttonsFrame, text="Save", height=1, \
+                     command=lambda: self.save_data())
         saveButton.grid(row=1, column=0, sticky='news')
         continueButton = Button(buttonsFrame, text="Continue", height=1)
         continueButton.grid(row=0, column=0, sticky='news')
@@ -704,7 +804,7 @@ class Agitation(Frame):
         pBoxFrame.grid(row=1, column=0, sticky="news")
         
         nameLabel = Label(nameFrame, text="Agitation Name", font=titleFont)
-        nameEntry = Entry(nameFrame)
+        nameEntry = Entry(nameFrame, textvar = self.name)
         
         nameLabel.grid(row=0, column=0, sticky="news", padx=(0,3))
         nameEntry.grid(row=1, column=0, sticky="news", padx=(0,3))
@@ -723,6 +823,31 @@ class Agitation(Frame):
         patternsBox.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=patternsBox.yview)
 
+    def save_data(self):
+        newAgitation = {
+                        "duration": self.duration.get(),
+                        "interval": self.interval.get(),
+                        "repetitions": self.repetitions.get(),
+                        "totalTime": self.totalTime.get(),
+                        "name": self.name.get()
+                        }
+                        
+        agitationPattern = AgitationPattern(newAgitation)
+        
+        ## UPDATE APP AGITATION LIST ##
+        app.agitationPatterns.append(agitationPattern)
+        
+        self.clear_data()
+        
+        app.write_json("agitation", newAgitation)
+    
+    def clear_data(self):
+        self.duration.set("")
+        self.name.set("")
+        self.interval.set("")
+        self.repetitions.set("")
+        self.totalTime.set("")
+    
 class NewAgitationCheck(Frame):
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
@@ -824,6 +949,13 @@ class Recipes(Frame):
         rowFrame2.grid(column=0, row=1, sticky="news", pady=(1.5, 1.5), padx=7.5)
         rowFrame3.grid(column=0, row=2, sticky="news", pady=(1.5, 7.5), padx=7.5)
         
+        self.duration = StringVar()
+        self.temp = StringVar()
+        self.cat = StringVar()
+        self.film = StringVar()
+        self.name = StringVar()
+        self.duration = StringVar()
+        
         durationEntry = Entry(rowFrame1)
         tempEntry = Entry(rowFrame1)
         catEntry = Combobox(rowFrame2)
@@ -853,7 +985,8 @@ class Recipes(Frame):
         backButton = Button(buttonsFrame, text="Voltar", height=1, \
                      command=lambda: controller.show_frame("NewAgitationCheck"))
         backButton.grid(row=3, column=0, sticky='news')
-        saveButton = Button(buttonsFrame, text="Save", height=1)
+        saveButton = Button(buttonsFrame, text="Save", height=1, \
+                     command=lambda: self.save_data())
         saveButton.grid(row=1, column=0, sticky='news')
         continueButton = Button(buttonsFrame, text="Continue", height=1)
         continueButton.grid(row=0, column=0, sticky='news')
@@ -883,8 +1016,32 @@ class Recipes(Frame):
             
         patternsBox.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=patternsBox.yview)
-
-
+    
+    def save_data(self):
+        newRecipe = {
+                        "duration": self.duration.get(),
+                        "temperature": self.temp.get(),
+                        "category": self.cat.get(),
+                        "film": self.film.get(),
+                        "name": self.name.get()
+                    }
+                        
+        Recipe(newRecipe)
+        ## ATUALIZAR RECEITAS DO APP ##
+        self.clear_data()
+        
+        app.write_json("recipe", newRecipe)
+        
+    def clear_data(self):
+        self.category.set("")
+        self.name.set("")
+        self.film.set("")
+        self.temp.set("")
+        self.duration.set("")
+    
 if __name__ == "__main__":
     app = PyLabApp()
+    
+    app.check_files()
+    
     app.mainloop()
