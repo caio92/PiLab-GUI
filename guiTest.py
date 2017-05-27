@@ -12,77 +12,63 @@ scaleReadingText = "\n\n Leitura atual:\nMUITOS KGs"
 onOffText = ["Turn\nOn", "Turn\nOff"]
 runText = ["Run", "Running"]
 
-recipesDir = "./LabPi/recipes.conf"
-agitationDir = "./LabPi/agitation.conf"
+defaultDir = "./LabPi/"
 
-#directories = {"recipes": recipesDir, "agitation": agitationDir}
-directories = [recipesDir, agitationDir]
+recipesFile = defaultDir + "recipes.conf"
+agitationFile = defaultDir + "agitation.conf"
 
-class AgitationPattern:
-    def __init__(self, dictInfo):#name, duration, interval, repetitions = None, totalTime = None):
-        self.dictInfo = dictInfo
-        #self.name = name
-        #self.duration = duration
-        #self.interval = interval
+class DataController:
+    def __init__(self):
+        self.agitations = {}
+        self.recipes = {}
+        self.categories = []
+        self.films = []
+        self.agitationWidgets = []
+        self.recipesWidgets = []
         
-        #if repetitions is not None:
-            #self.repetitions = repetitions
-        #if totalTime is not None:
-            #self.totalTime = totalTime
-            
-    #def get_agitation(self):
-        #agitationDict = {
-                        #"duration": self.duration,
-                        #"name": self.name,
-                        #"interval": self.interval,
-                      #}
-                      
-        #if self.repetitions is not None:
-            #agitationDict.update({"repetitions": self.repetitions})
-        #if self.totalTime is not None:
-            #agitationDict.update({"totalTime": totalTime})
-                      
-        #return agitationDict
+    def add_widget(self, widget, wType):
+        if wType == "recipe":
+            self.recipesWidgets.append(widget)
+        else:
+            self.agitationWidgets.append(widget)
 
-class Recipe:
-    def __init__(self, agitation, recipeInfo):# name, category, film, temperature):
-        self.agitation = agitation
-        self.recipe = recipeInfo
-        #self.name = name
-        #self.film = film
-        #self.category = category
-        #self.temperature = temperature
+    def add_recipe(self, recipe):
+        #pdb.set_trace()
+        self.recipes.update(recipe)
+        self.update_widgets("recipe", recipe)
         
-    #def get_recipe(self):
-        #recipteDict = {
-                        #"agitation": self.agitation,
-                        #"name": self.name,
-                        #"film": self.film,
-                        #"category": self.category,
-                        #"temperature": self.temperature
-                      #}
-                      
-        #return recipteDict
+    def add_agitation(self, pattern):
+        self.agitations.update(pattern)
+        self.update_widgets("agitation", pattern) 
+        
+    def update_widgets(self, wType, newItem):
+        if wType == "recipe":
+            widgets = self.recipesWidgets
+        else:
+            widgets = self.agitationWidgets
+        
+        for widget in widgets:
+            print(widget.winfo_class())
+            if widget.winfo_class() == "Listbox":
+                widget.insert(END, newItem["name"])
 
 class PyLabApp (Tk):
     
     def check_files(self):
-        for directory in directories:
-            
-            direct = os.path.dirname(directory)
-            if not os.path.exists(direct):
-                os.mkdir(direct)
+        directory = os.path.dirname(defaultDir)
+        if not os.path.exists(directory):
+                os.mkdir(directory)
                 
     def write_json(self, dataType, info):
         app.check_files()
         
         if dataType == "recipe":
-            directory = recipesDir
+            directory = recipesFile
         else: 
-            directory = agitationDir
+            directory = agitationFile
             
         with open(directory, 'a') as jsonFile:
-            json.dump(info, jsonFile, sort_keys=True, indent=4)
+            json.dump(info, jsonFile, sort_keys=False, indent=4)
             jsonFile.write('\n')
             jsonFile.close()
             
@@ -90,9 +76,9 @@ class PyLabApp (Tk):
         app.check_files()
 
         if dataType == "recipe":
-            directory = recipesDir
+            directory = recipesFile
         else: 
-            directory = agitationDir
+            directory = agitationFile
             
         with open(directory, 'r') as jsonFile:
             data = json.load(jsonFile)
@@ -121,10 +107,7 @@ class PyLabApp (Tk):
     def __init__(self, *args, **kwargs):
         Tk.__init__(self, *args, **kwargs)
         
-        self.agitationPatterns = []
-        self.recipes = []
-        self.categories = []
-        self.films = []
+        self.dataController = DataController()
         
         global titleFont
         titleFont = font.Font(size=10, weight="bold")
@@ -139,7 +122,7 @@ class PyLabApp (Tk):
         container.grid()
 
         self.frames = {}
-        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe, Agitation, NewAgitationCheck, Recipes):
+        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe, Agitation, NewAgitationCheck, RecipesWindow):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -806,16 +789,20 @@ class Agitation(Frame):
         nameLabel = Label(nameFrame, text="Agitation Name", font=titleFont)
         nameEntry = Entry(nameFrame, textvar = self.name)
         
+        controller.dataController.add_widget(nameEntry, "agitation")
+        
         nameLabel.grid(row=0, column=0, sticky="news", padx=(0,3))
         nameEntry.grid(row=1, column=0, sticky="news", padx=(0,3))
         
         patternsBox = Listbox(pBoxFrame, width=15)
         patternsBox.grid(row=0, column=0, sticky="news", padx=0)
         
-        patterns = ["one", "two", "three", "four", "two", "three", "four", "two", "three", "four"]
+        controller.dataController.add_widget(patternsBox, "agitation")
         
-        for item in patterns:
-            patternsBox.insert(END, item)
+        #patterns = ["one", "two", "three", "four", "two", "three", "four", "two", "three", "four"]
+        
+        #for item in patterns:
+        #    patternsBox.insert(END, item)
             
         scrollbar = Scrollbar(pBoxFrame, width=40)
         scrollbar.grid(row=0, column=1, sticky="news", padx=(0,5))
@@ -825,17 +812,16 @@ class Agitation(Frame):
 
     def save_data(self):
         newAgitation = {
-                        "duration": self.duration.get(),
-                        "interval": self.interval.get(),
-                        "repetitions": self.repetitions.get(),
-                        "totalTime": self.totalTime.get(),
-                        "name": self.name.get()
+                        "name": self.name.get(),
+                        "data": {
+                                    "duration": self.duration.get(),
+                                    "interval": self.interval.get(),
+                                    "repetitions": self.repetitions.get(),
+                                    "totalTime": self.totalTime.get()
+                                }
                         }
                         
-        agitationPattern = AgitationPattern(newAgitation)
-        
-        ## UPDATE APP AGITATION LIST ##
-        app.agitationPatterns.append(agitationPattern)
+        app.dataController.add_agitation(newAgitation)
         
         self.clear_data()
         
@@ -847,6 +833,7 @@ class Agitation(Frame):
         self.interval.set("")
         self.repetitions.set("")
         self.totalTime.set("")
+        self.update_idletasks()
     
 class NewAgitationCheck(Frame):
     def __init__(self, parent, controller):
@@ -876,10 +863,10 @@ class NewAgitationCheck(Frame):
                      command=lambda: controller.show_frame("Agitation"))
         agitationButton.grid(row=0, column=0, sticky='news')
         recipeButton = Button(rowFrame1, text="Create New Recipe", height=1, \
-                     command=lambda: controller.show_frame("Recipes"))
+                     command=lambda: controller.show_frame("RecipesWindow"))
         recipeButton.grid(row=1, column=0, sticky='news')
 
-class Recipes(Frame):
+class RecipesWindow(Frame):
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.controller = controller
@@ -955,12 +942,13 @@ class Recipes(Frame):
         self.film = StringVar()
         self.name = StringVar()
         self.duration = StringVar()
+        self.agitation = StringVar()
         
-        durationEntry = Entry(rowFrame1)
-        tempEntry = Entry(rowFrame1)
-        catEntry = Combobox(rowFrame2)
-        filmEntry = Combobox(rowFrame2)
-        agitationEntry = Combobox(rowFrame2)
+        durationEntry = Entry(rowFrame1, textvar = self.duration)
+        tempEntry = Entry(rowFrame1, textvar = self.temp)
+        catEntry = Combobox(rowFrame2, textvar = self.cat)
+        filmEntry = Combobox(rowFrame2, textvar = self.film)
+        agitationEntry = Combobox(rowFrame2, textvar = self.agitation)
         
         durationEntry.grid(row=1, column=0, sticky="news")
         tempEntry.grid(row=1, column=1, sticky="news")
@@ -998,18 +986,22 @@ class Recipes(Frame):
         pBoxFrame.grid(row=1, column=0, sticky="news")
         
         nameLabel = Label(nameFrame, text="Recipe Name", font=titleFont)
-        nameEntry = Entry(nameFrame)
+        nameEntry = Entry(nameFrame, textvar = self.name)
         
+        controller.dataController.add_widget(nameEntry, "recipe")
+                
         nameLabel.grid(row=0, column=0, sticky="news", padx=(0,3))
         nameEntry.grid(row=1, column=0, sticky="news", padx=(0,3))
         
         patternsBox = Listbox(pBoxFrame, width=15)
         patternsBox.grid(row=0, column=0, sticky="news", padx=0)
         
-        patterns = ["one", "two", "three", "four", "two", "three", "four", "two", "three", "four"]
+        controller.dataController.add_widget(patternsBox, "recipe")
         
-        for item in patterns:
-            patternsBox.insert(END, item)
+        #patterns = ["one", "two", "three", "four", "two", "three", "four", "two", "three", "four"]
+        
+        #for item in patterns:
+            #patternsBox.insert(END, item)
             
         scrollbar = Scrollbar(pBoxFrame, width=40)
         scrollbar.grid(row=0, column=1, sticky="news", padx=(0,5))
@@ -1018,26 +1010,32 @@ class Recipes(Frame):
         scrollbar.config(command=patternsBox.yview)
     
     def save_data(self):
-        newRecipe = {
-                        "duration": self.duration.get(),
-                        "temperature": self.temp.get(),
-                        "category": self.cat.get(),
-                        "film": self.film.get(),
-                        "name": self.name.get()
+        #pdb.set_trace()
+        newRecipe = {   
+                        "name": self.name.get(),
+                        "data": {
+                                    "category": self.cat.get(),
+                                    "duration": self.duration.get(),
+                                    "film": self.film.get(),
+                                    "temperature": self.temp.get(),
+                                    "agitation": self.agitation.get()
+                                }
                     }
                         
-        Recipe(newRecipe)
-        ## ATUALIZAR RECEITAS DO APP ##
+        app.dataController.add_recipe(newRecipe)
+        
         self.clear_data()
         
         app.write_json("recipe", newRecipe)
         
     def clear_data(self):
-        self.category.set("")
+        self.cat.set("")
         self.name.set("")
         self.film.set("")
         self.temp.set("")
         self.duration.set("")
+        self.agitation.set("")
+        #self.update_idletasks()
     
 if __name__ == "__main__":
     app = PyLabApp()
