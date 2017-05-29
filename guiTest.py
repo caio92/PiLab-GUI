@@ -33,42 +33,72 @@ class DataController:
             self.agitationWidgets.append(widget)
 
     def add_recipe(self, recipe):
-        #pdb.set_trace()
         self.recipes.update(recipe)
         self.update_widgets("recipe", recipe)
         
     def add_agitation(self, pattern):
         self.agitations.update(pattern)
-        self.update_widgets("agitation", pattern) 
+        self.update_widgets("agitation", pattern)
+        
+    def update_import(self, importType):
+                
+        if importType == "recipe":
+            for recipe in self.recipes:
+                self.update_widgets(importType, recipe)
+        else:
+            for agitation in self.agitations:
+                self.update_widgets(importType, agitation)
         
     def update_widgets(self, wType, newItem):
         if wType == "recipe":
             widgets = self.recipesWidgets
+            #data = self.recipes
         else:
             widgets = self.agitationWidgets
+            #data = self.agitations
         
         for widget in widgets:
-            print(widget.winfo_class())
+            #print(widget.winfo_class())
             if widget.winfo_class() == "Listbox":
-                widget.insert(END, newItem["name"])
+                #key = list(newItem.keys())[0]
+                widget.insert(END, newItem)
+
+    def import_data(self, dataIn, dataType):
+        if dataType == "recipe":
+            if not self.recipes:
+                self.recipes = dataIn.copy()
+            else:
+                for data in dataIn:
+                    self.recipes.update(data)
+                    
+        else:
+            dictIn = self.agitations
+            if not self.agitations:
+                self.agitations = dataIn.copy()
+            else:
+                for data in dataIn:
+                    self.agitations.update(data)
 
 class PyLabApp (Tk):
     
     def check_files(self):
         directory = os.path.dirname(defaultDir)
         if not os.path.exists(directory):
-                os.mkdir(directory)
-                
-    def write_json(self, dataType, info):
+            os.mkdir(directory)
+                                
+    def write_json(self, dataType):#, info):
         app.check_files()
         
         if dataType == "recipe":
             directory = recipesFile
+            data = app.dataController.recipes
         else: 
             directory = agitationFile
+            data = app.dataController.agitations
+
             
-        with open(directory, 'a') as jsonFile:
-            json.dump(info, jsonFile, sort_keys=False, indent=4)
+        with open(directory, 'w') as jsonFile:
+            json.dump(data, jsonFile, sort_keys=False, indent=4)
             jsonFile.write('\n')
             jsonFile.close()
             
@@ -79,12 +109,13 @@ class PyLabApp (Tk):
             directory = recipesFile
         else: 
             directory = agitationFile
-            
-        with open(directory, 'r') as jsonFile:
-            data = json.load(jsonFile)
-            jsonFile.close()
-            
-            return data
+        
+        if os.stat(directory).st_size != 0:
+            with open(directory, 'r') as jsonFile:
+                data = json.load(jsonFile)
+                jsonFile.close()
+                                
+                return data
 
     def show_frame(self, page_name):
             '''Show a frame for the given page name'''
@@ -812,8 +843,7 @@ class Agitation(Frame):
 
     def save_data(self):
         newAgitation = {
-                        "name": self.name.get(),
-                        "data": {
+                        self.name.get(): {
                                     "duration": self.duration.get(),
                                     "interval": self.interval.get(),
                                     "repetitions": self.repetitions.get(),
@@ -825,7 +855,7 @@ class Agitation(Frame):
         
         self.clear_data()
         
-        app.write_json("agitation", newAgitation)
+        app.write_json("agitation")#, newAgitation)
     
     def clear_data(self):
         self.duration.set("")
@@ -834,6 +864,9 @@ class Agitation(Frame):
         self.repetitions.set("")
         self.totalTime.set("")
         self.update_idletasks()
+    
+    def load_data(self):
+        self.controller.read_json("agitation")
     
 class NewAgitationCheck(Frame):
     def __init__(self, parent, controller):
@@ -1010,10 +1043,8 @@ class RecipesWindow(Frame):
         scrollbar.config(command=patternsBox.yview)
     
     def save_data(self):
-        #pdb.set_trace()
         newRecipe = {   
-                        "name": self.name.get(),
-                        "data": {
+                        self.name.get(): {
                                     "category": self.cat.get(),
                                     "duration": self.duration.get(),
                                     "film": self.film.get(),
@@ -1026,7 +1057,7 @@ class RecipesWindow(Frame):
         
         self.clear_data()
         
-        app.write_json("recipe", newRecipe)
+        app.write_json("recipe")#, newRecipe)
         
     def clear_data(self):
         self.cat.set("")
@@ -1035,11 +1066,18 @@ class RecipesWindow(Frame):
         self.temp.set("")
         self.duration.set("")
         self.agitation.set("")
-        #self.update_idletasks()
     
 if __name__ == "__main__":
     app = PyLabApp()
     
     app.check_files()
+        
+    if os.path.isfile(recipesFile):
+        app.dataController.import_data(app.read_json("recipe"), "recipe")
+        app.dataController.update_import("recipe")
+    if os.path.isfile(agitationFile):
+        app.dataController.import_data(app.read_json("agitation"), "agitation")
+        app.dataController.update_import("agitation")
+
     
     app.mainloop()
