@@ -33,6 +33,12 @@ class DataController:
             self.agitationWidgets.append(widget)
 
     def add_recipe(self, recipe):
+        if recipe["category"] not in self.categories:
+            self.category.append(recipe["category"])
+            
+        if recipe["film"] not in self.films:
+            self.category.append(recipe["film"])
+            
         self.recipes.update(recipe)
         self.update_widgets("recipe", recipe)
         
@@ -78,6 +84,58 @@ class DataController:
             else:
                 for data in dataIn:
                     self.agitations.update(data)
+
+    def validate_data(self, data):
+        
+        errorText = ""
+        
+        #pdb.set_trace()
+        
+        for item in data:
+            if item == "":
+                errorText = "".join([errorText, "Name cannot be blank.\n"])
+            elif item in self.recipes:
+                errorText = "".join([errorText, "Name already exists.\n"])
+            for info in data[item]:
+                if info == "film":
+                    if data[item][info] not in self.films:
+                        pass
+                if info == "category":
+                    if  data[item][info] not in self.categories:
+                        pass
+                if info == "temperature":
+                    if not data[item][info].isdigit():
+                        if data[item][info] != "":
+                            errorText = "".join([errorText, "Temperature must be a numeric value.\n"])
+                if info == "agitation":
+                    if data[item][info] == "":
+                        errorText = "".join([errorText, "Agitation pattern cannot be blank.\n"])
+                    elif data[item][info] not in self.agitations:
+                        errorText = "".join([errorText, "Agitation pattern doesn't exist.\n"])
+                if info == "duration":
+                    if data[item][info] == "":
+                        errorText = "".join([errorText, "Duration cannot be blank.\n"])
+                    elif not data[item][info].isdigit():
+                        errorText = "".join([errorText, "Duration must be a numeric value.\n"])
+                if info == "interval":
+                    if data[item][info] == "":
+                        errorText = "".join([errorText, "Interval cannot be blank.\n"])
+                    elif not data[item][info].isdigit():
+                        errorText = "".join([errorText, "Interval must be a numeric value.\n"])
+                if info == "repetitions":
+                    if not data[item][info].isdigit():
+                        if data[item][info] != "":
+                            errorText = "".join([errorText, "Repetitions must be a numeric value.\n"])
+                    elif isinstance( data[item][info], int ):
+                        errorText = "".join([errorText, "Repetitions must be an integer.\n"])
+                if info == "totalTime":
+                    if not data[item][info].isdigit():
+                        if data[item][info] != "":
+                            errorText = "".join([errorText, "Total time must be a numeric value.\n"])
+                        
+                #pdb.set_trace()        
+        GUIWarningWindow(errorText, twoButton=False)
+        return False
 
 class PyLabApp (Tk):
     
@@ -205,7 +263,7 @@ class GUIButton:
 
 class GUIWarningWindow:
     
-    def __init__(self, warningText, warningTitle="Attention!"):                    
+    def __init__(self, warningText, warningTitle="Attention!", twoButton=True):                    
         self.warning = Tk()
         self.warning.title(warningTitle)
         self.warning.geometry("320x120+%d+%d" % (app.winfo_x(), app.winfo_y()+app.winfo_height()/5))
@@ -215,18 +273,24 @@ class GUIWarningWindow:
         self.warning.grid_rowconfigure(1, weight=1)
         
         self.buttonFrame = Frame(self.warning)
-        self.buttonFrame.grid(row=1, column=0, sticky="news")
+        self.buttonFrame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 5))
         self.buttonFrame.grid_columnconfigure(0, weight=1)
-        self.buttonFrame.grid_columnconfigure(1, weight=1)
         self.buttonFrame.grid_rowconfigure(0, weight=1)
                     
         self.label = Label(self.warning, text=warningText,\
                 width=220, font=font.Font(weight="bold", size=10))
-        self.label.grid(row=0, column=0, sticky="news", padx=10, pady=10)
-        self.yesButton = Button(self.buttonFrame, text="Yes")
-        self.yesButton.grid(row=0, column=0, sticky="news")
-        self.noButton = Button(self.buttonFrame, text="No")
-        self.noButton.grid(row=0, column=1, sticky="news")
+        self.label.grid(row=0, column=0, sticky="news", padx=10, pady=(5, 0))
+        
+        if twoButton:
+            self.buttonFrame.grid_columnconfigure(1, weight=1)
+            self.yesButton = Button(self.buttonFrame, text="Yes")
+            self.yesButton.grid(row=0, column=0, sticky="news")
+            self.noButton = Button(self.buttonFrame, text="No")
+            self.noButton.grid(row=0, column=1, sticky="news")
+        else:
+            self.okButton = Button(self.buttonFrame, text="Ok", \
+                            command = lambda: self.Destroy(), width=10, height=2)
+            self.okButton.grid(row=0, column=0, sticky="ns", pady=0)
         
     def GetWidgets(self):
         return {"root": self.warning, "label": self.label, \
@@ -851,11 +915,13 @@ class Agitation(Frame):
                                 }
                         }
                         
-        app.dataController.add_agitation(newAgitation)
+        if app.dataController.validate_data(newAgitation):
+                        
+            app.dataController.add_agitation(newAgitation)
         
-        self.clear_data()
+            self.clear_data()
         
-        app.write_json("agitation")#, newAgitation)
+            app.write_json("agitation")#, newAgitation)
     
     def clear_data(self):
         self.duration.set("")
@@ -1052,12 +1118,13 @@ class RecipesWindow(Frame):
                                     "agitation": self.agitation.get()
                                 }
                     }
-                        
-        app.dataController.add_recipe(newRecipe)
         
-        self.clear_data()
+        if app.dataController.validate_data(newRecipe):                
+            app.dataController.add_recipe(newRecipe)
         
-        app.write_json("recipe")#, newRecipe)
+            self.clear_data()
+        
+            app.write_json("recipe")#, newRecipe)
         
     def clear_data(self):
         self.cat.set("")
@@ -1066,6 +1133,9 @@ class RecipesWindow(Frame):
         self.temp.set("")
         self.duration.set("")
         self.agitation.set("")
+    
+    def load_data(self):
+        self.controller.read_json("recipe")
     
 if __name__ == "__main__":
     app = PyLabApp()
