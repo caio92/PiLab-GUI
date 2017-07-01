@@ -1544,4 +1544,3 @@ if __name__ == "__main__":
             app.dataController.import_data(data, "recipe")
 
     app.mainloop()
->>>>>>> Stashed changes
