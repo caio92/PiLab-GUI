@@ -1,6 +1,5 @@
+# -*- coding: utf-8 -*-
 from tkinter import *
-<<<<<<< Updated upstream
-=======
 from tkinter import font
 from tkinter.ttk import Combobox
 from w1thermsensor import W1ThermSensor
@@ -8,18 +7,11 @@ from w1thermsensor import W1ThermSensor
 import os
 import json
 import peripherals
->>>>>>> Stashed changes
 
-#class Application:
-#    def __init__(self, master=None):
-
+import pdb
 
 scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
 scaleReadingText = "\n\n Leitura atual:\nMUITOS KGs"
-<<<<<<< Updated upstream
-
-
-=======
 onOffText = ["Turn\nOn", "Turn\nOff"]
 runText = ["Run", "Running"]
 
@@ -100,19 +92,22 @@ class DataController:
             widgets = self.recipesWidgets
             widgets["categoryBox"].configure(value=self.categories)
             widgets["filmBox"].configure(value=self.films)
+            widgets["nameBox"].configure(value=list(self.recipes.keys()))
         else:
             widgets = self.agitationWidgets
             widgets["agitationBox"].configure(value=list(self.agitations.keys()))
         
         if item is not None:
             if isInsert:
-                if isinstance(item, str):
-                    widgets["listBox"].insert(END, item)
-                else:
-                    for key in item:
-                        widgets["listBox"].insert(END, key)
+                if "listBox" in widgets:
+                    if isinstance(item, str):
+                        widgets["listBox"].insert(END, item)
+                    else:
+                        for key in item:
+                            widgets["listBox"].insert(END, key)
             else:
-                widgets["listBox"].delete(item)
+                if "listBox" in widgets:
+                    widgets["listBox"].delete(item)
                 if wType == "recipe":
                     self.rebuild_lists()
                     widgets["categoryBox"].configure(value=self.categories)
@@ -201,13 +196,14 @@ class DataController:
                             errorText = "".join([errorText, "Temperature must be greater than 0.\n"])
                         continue
                     if info == "agitation":
-                        if data[item][info] == "":
-                            errorText = "".join([errorText, "Agitation pattern cannot be blank.\n"])
-                        elif data[item][info] not in self.agitations:
-                            text = ["Agitation pattern", "doesn't exist.\n"]
-                            text.insert(1, data[item][info])
-                            text = " ".join(text)
-                            errorText = "".join([errorText, text])
+                        for agitation in data[item][info]:
+                            if agitation == "":
+                                errorText = "".join([errorText, "Agitation pattern cannot be blank.\n"])
+                            elif agitation not in self.agitations:
+                                text = ["Agitation pattern", "doesn't exist.\n"]
+                                text.insert(1, data[item][info])
+                                text = " ".join(text)
+                                errorText = "".join([errorText, text])
                         continue
                 else:
                     if info == "interval":
@@ -379,17 +375,29 @@ class PyLabApp (Tk):
                 
         self.pController.RegisterTherms()
 		
->>>>>>> Stashed changes
 class GUIButton:
-    def __init__(self, tkButton, buttonType, buttonTextVar):
-        self.button = tkButton
-        self.buttonTextVar = buttonTextVar
+    def __init__(self, buttonType, master, **kwargs):
+        #self.button = tkButton
+
+        if "textvariable" not in kwargs:
+            self.buttonTextVar = StringVar()
+            kwargs.update({'textvariable': self.buttonTextVar})
+            #self.button = Button(master, kwargs, textvariable=self.buttonTextVar)
+        if "command" not in kwargs:
+            kwargs.update({'command': lambda: self.ToggleText()})
+            
+        self.button = Button(master, kwargs)
+            
         self.buttonToggle = True
         self.buttonType = buttonType
 
         if buttonType == "scale":
             self.buttonText = scaleText
-
+        elif buttonType == "measureTemp":
+            self.buttonText = onOffText
+        else:
+            self.buttonText = runText
+            
         self.buttonTextVar.set(self.buttonText[0])
 
     def ToggleText(self):
@@ -413,91 +421,6 @@ class GUIButton:
     def GetText(self):
         return self.buttonTextVar.get()
 
-<<<<<<< Updated upstream
-    def SetParam(self, param, value):
-        self.button[param]=value
-        self.button.grid()
-        
-
-def ScaleButtonClick(button):
-    if button.buttonToggle:
-        button.ToggleText()
-        buttonText = button.GetText()
-
-        #ler sensor da balanca aqui
-
-        button.SetParam("anchor", 'n')
-
-        buttonText += scaleReadingText
-        button.SetText(buttonText)
-        
-    else:
-        button.ToggleText()
-        button.SetParam("anchor", 'center')
-
-
-def UpdateScale(button):
-    #funcao que faz a leitura do sensor aqui!!
-    pass   
-
-root = Tk()
-root.title('Layout Prototype')
-root.geometry("320x240")
-
-#define quatro frames iniciais
-scaleFrame = Frame (root, width=150, height=110)#, bg='cyan')
-recipesFrame = Frame (root, width=150, height=110)#, bg='red')
-temperatureFrame = Frame (root, width=150, height=110)#, bg='green')
-allFrame = Frame (root, width=150, height=110)#, bg='yellow')
-
-#configura comportamento dos frames
-root.grid_rowconfigure( 1, weight=1)
-root.grid_columnconfigure( 1, weight=1)
-root.grid_rowconfigure(0, weight=1)
-root.grid_columnconfigure(0, weight=1)
-
-
-scaleFrame.grid_rowconfigure( 0, weight=1)
-scaleFrame.grid_columnconfigure( 0, weight=1)
-temperatureFrame.grid_rowconfigure( 0, weight=1)
-temperatureFrame.grid_columnconfigure( 1, weight=1)
-temperatureFrame.grid_columnconfigure( 0, weight=1)
-allFrame.grid_rowconfigure( 0, weight=1)
-allFrame.grid_columnconfigure( 0, weight=1)
-recipesFrame.grid_columnconfigure( 0, weight=1)
-recipesFrame.grid_columnconfigure( 1, weight=1)
-recipesFrame.grid_rowconfigure( 0, weight=1)
-
-#coloca as frames no GRID
-scaleFrame.grid(row=0, column=0, pady=(7.5,2.5), padx=(7.5,2.5))
-recipesFrame.grid(row=0, column=1, pady=(7.5,2.5), padx=(2.5,7.5))
-temperatureFrame.grid(row=1, column=0, pady=(2.5,7.5), padx=(7.5,2.5))
-allFrame.grid(row=1, column=1, pady=(2.5,7.5), padx=(2.5,7.5))
-
-#configura variaveis de texto dos botoes
-scaleTextVar = StringVar()
-
-#declara os botoes dos frames
-scaleButton = Button(scaleFrame, textvariable=scaleTextVar, command=lambda: ScaleButtonClick(scaleButtonGUI), height=7, width=16)
-newRecipeButton = Button(recipesFrame, height=7, width=6, text="Editar\nReceita")
-useRecipeButton = Button(recipesFrame, height=7, width=6, text="Executar\nReceita")
-adjustTempButton = Button(temperatureFrame, height=7, width=6, text="Ajustar\nTemp.")
-measureTempButton = Button(temperatureFrame, height=7, width=6, text="Medir\nTemp.")
-allButton = Button(allFrame, height=7, width=16, text="Rotina Completa")
-
-#coloca os botoes no grid do frame
-newRecipeButton.grid(column=0, row=0, sticky=N+S+E+W)
-useRecipeButton.grid(column=1, row=0, sticky=N+S+E+W)
-scaleButton.grid(sticky=N+S+E+W)
-adjustTempButton.grid(column=0, row=0, sticky=N+S+E+W)
-measureTempButton.grid(column=1, row=0, sticky=N+S+E+W)
-allButton.grid(sticky=N+S+E+W)
-
-#cria estrutura de dados dos botoes
-scaleButtonGUI = GUIButton(scaleButton, "scale", scaleTextVar)
-
-root.mainloop()
-=======
     def GetButton(self):
         return self.button
 
@@ -1258,7 +1181,7 @@ class Agitation(Frame):
     def delete_entry(self, warning=None):
 
         selection = self.patternsBox.curselection()
-        
+
         if selection == ():
             print("No item selected!")
         else:
@@ -1315,7 +1238,7 @@ class RecipesWindow(Frame):
          
         patternsFrame = Frame(rowFrame3, width=244, height=rowHeight[2])
         buttonsFrame = Frame(rowFrame3, width=61, height=rowHeight[2])
-        nameFrame = Frame(patternsFrame, width=244, height=rowHeight[1])
+        agitationFrame = Frame(patternsFrame, width=244, height=rowHeight[1])
         pBoxFrame = Frame(patternsFrame, width=244, height=rowHeight[2]-rowHeight[1])
 
         #configura comportamento dos frames
@@ -1340,10 +1263,8 @@ class RecipesWindow(Frame):
         rowFrame3.grid_columnconfigure(1, weight=1)
         
         patternsFrame.grid_columnconfigure(0, weight=1)
-        patternsFrame.grid_columnconfigure(1, weight=1)
         patternsFrame.grid_rowconfigure(0, weight=1)
         patternsFrame.grid_rowconfigure(1, weight=1)
-        #patternsFrame.grid_rowconfigure(2, weight=1)
         
         buttonsFrame.grid_columnconfigure(0, weight=1)
         buttonsFrame.grid_rowconfigure(0, weight=1)
@@ -1351,17 +1272,17 @@ class RecipesWindow(Frame):
         buttonsFrame.grid_rowconfigure(2, weight=1)
         buttonsFrame.grid_rowconfigure(3, weight=1)
         
-        nameFrame.grid_rowconfigure(1, weight=1)
-        nameFrame.grid_rowconfigure(0, weight=1)
-        nameFrame.grid_columnconfigure(0, weight=1)
+        agitationFrame.grid_rowconfigure(0, weight=1)
+        agitationFrame.grid_rowconfigure(1, weight=1)
+        agitationFrame.grid_columnconfigure(0, weight=1)
         
-        #pBoxFrame.grid_rowconfigure(1, weight=1)
         pBoxFrame.grid_rowconfigure(0, weight=1)
         pBoxFrame.grid_columnconfigure(0, weight=1)
+        pBoxFrame.grid_columnconfigure(1, weight=1)
 
         buttonsFrame.grid_propagate(False)
         patternsFrame.grid_propagate(False)
-        nameFrame.grid_propagate(False)
+        agitationFrame.grid_propagate(False)
         pBoxFrame.grid_propagate(False)
         rowFrame3.grid_propagate(False)
         rowFrame2.grid_propagate(False)
@@ -1376,35 +1297,36 @@ class RecipesWindow(Frame):
         self.cat = StringVar()
         self.film = StringVar()
         self.name = StringVar()
-        self.agitation = StringVar()
         
         durationEntry = Entry(rowFrame1, textvar = self.duration)
         tempEntry = Entry(rowFrame1, textvar = self.temp)
         catEntry = Combobox(rowFrame2, textvar = self.cat, values=controller.dataController.categories)
         filmEntry = Combobox(rowFrame2, textvar = self.film, values=controller.dataController.films)
-        agitationEntry = Combobox(rowFrame2, textvar = self.agitation, values=list(controller.dataController.agitations.keys()))
-        
-        controller.dataController.add_widget(catEntry, "recipe", "categoryBox")
-        controller.dataController.add_widget(filmEntry, "recipe", "filmBox")
-        controller.dataController.add_widget(agitationEntry, "agitation", "agitationBox")
+        nameEntry = Combobox(rowFrame2, textvar = self.name)#, values=list(controller.dataController.agitations.keys()))
         
         durationEntry.grid(row=1, column=0, sticky="news")
         tempEntry.grid(row=1, column=1, sticky="news")
         catEntry.grid(row=1, column=0, sticky="news")
         filmEntry.grid(row=1, column=1, sticky="news")
-        agitationEntry.grid(row=1, column=2, sticky="news")
+        nameEntry.grid(row=1, column=2, sticky="news")
         
+        nameEntry.bind("<<ComboboxSelected>>", self.recipe_select)
+        
+        controller.dataController.add_widget(catEntry, "recipe", "categoryBox")
+        controller.dataController.add_widget(filmEntry, "recipe", "filmBox")
+        controller.dataController.add_widget(nameEntry, "recipe", "nameBox")
+                
         durationLabel = Label(rowFrame1, text="Duration [m]", font=titleFont)
         tempLabel = Label(rowFrame1, text="Temperature [C]", font=titleFont)
         catLabel = Label(rowFrame2, text="Category", font=titleFont)
         filmLabel = Label(rowFrame2, text="Film", font=titleFont)
-        agitationLabel = Label(rowFrame2, text="Agitation", font=titleFont)
+        nameLabel = Label(rowFrame2, text="Name", font=titleFont)
         
         durationLabel.grid(row=0, column=0, sticky="news")
         tempLabel.grid(row=0, column=1, sticky="news")
         catLabel.grid(row=0, column=0, sticky="news")
         filmLabel.grid(row=0, column=1, sticky="news")
-        agitationLabel.grid(row=0, column=2, sticky="news")
+        nameLabel.grid(row=0, column=2, sticky="news")
         
         buttonsFrame.grid(column=1, row=0, sticky="news")
         
@@ -1414,32 +1336,36 @@ class RecipesWindow(Frame):
         saveButton = Button(buttonsFrame, text="Save", height=1, \
                      command=lambda: self.save_data())
         saveButton.grid(row=1, column=0, sticky='news')
-        self.continueButton = Button(buttonsFrame, text="Continue", height=1, state="disabled")
+        self.continueButton = Button(buttonsFrame, text="Continue", height=1, state="normal")
         self.continueButton.grid(row=0, column=0, sticky='news')
         self.deleteButton = Button(buttonsFrame, text="Delete", height=1, \
-                       command=lambda: self.confirm_delete(), state="disabled")
+                       command=lambda: self.delete_entry(), state="disabled")
         self.deleteButton.grid(row=2, column=0, sticky='news')
         
         patternsFrame.grid(row=0, column=0, sticky="news")
-        nameFrame.grid(row=0, column=0, sticky="news")
+        agitationFrame.grid(row=0, column=0, sticky="news")
         pBoxFrame.grid(row=1, column=0, sticky="news")
         
-        nameLabel = Label(nameFrame, text="Recipe Name", font=titleFont)
-        nameEntry = Entry(nameFrame, textvar = self.name)
+        agitationLabel = Label(agitationFrame, text="Agitations", font=titleFont)
+        agitationLabel.grid(row=0, column=0, sticky="news")#, padx=(0,3))
         
-        #controller.dataController.add_widget(nameEntry, "recipe", "nameBox")
-                
-        nameLabel.grid(row=0, column=0, sticky="news", padx=(0,3))
-        nameEntry.grid(row=1, column=0, sticky="news", padx=(0,3))
+        self.agitation = StringVar()
         
-        self.patternsBox = Listbox(pBoxFrame, width=15)
+        self.agitationEntry = Combobox(agitationFrame, textvar = self.agitation, \
+                    values=list(controller.dataController.agitations.keys()))
+        self.agitationEntry.bind("<<ComboboxSelected>>", self.add_pattern_to_recipe)
+        self.agitationEntry.grid(row=1, column=0, sticky="news")#, padx=(0,3))
+        
+        controller.dataController.add_widget(self.agitationEntry, "agitation", "agitationBox")
+        
+        self.patternsBox = Listbox(pBoxFrame)
         self.patternsBox.grid(row=0, column=0, sticky="news", padx=0)
-        self.patternsBox.bind('<<ListboxSelect>>', self.listbox_select)
+        self.patternsBox.bind('<<ListboxSelect>>', self.agitation_select)
 
-        controller.dataController.add_widget(self.patternsBox, "recipe", "listBox")
+        controller.dataController.add_widget(self.patternsBox, "recipe", "agitationsBox")
             
-        scrollbar = Scrollbar(pBoxFrame, width=40)
-        scrollbar.grid(row=0, column=1, sticky="news", padx=(0,5))
+        scrollbar = Scrollbar(pBoxFrame)
+        scrollbar.grid(row=0, column=1, sticky="news", padx=(0,3))
             
         self.patternsBox.config(yscrollcommand=scrollbar.set)
         scrollbar.config(command=self.patternsBox.yview)
@@ -1451,7 +1377,7 @@ class RecipesWindow(Frame):
                                     "duration": self.duration.get(),
                                     "film": self.film.get(),
                                     "temperature": self.temp.get(),
-                                    "agitation": self.agitation.get()
+                                    "agitations": self.patternsBox.get(0, END)
                                 }
                     }
                 
@@ -1481,29 +1407,33 @@ class RecipesWindow(Frame):
         
         self.deleteButton.configure(state="disabled")
         self.continueButton.configure(state="disabled")
+        
+        self.selection = ""
     
     def load_data(self):
         self.controller.read_json("recipe")
     
     def delete_entry(self, warning=None):
-
+        
+        pdb.set_trace()
+        
         selection = self.patternsBox.curselection()
         
-        if selection == ():
+        if self.selection == "":
             print("No item selected!")
         else:
-            if app.dataController.delete_entry(self.patternsBox.get(selection), "recipe"):
-                app.dataController.update_widgets("recipe", selection, False)
+            self.patternsBox.delete(self.patternsBox.get(0, "end").index(self.selection))
+            #if app.dataController.delete_entry(self.selection, "recipe"):
+            #    app.dataController.update_widgets("recipe", selection, False)
         
-        self.clear_data()
+        #self.clear_data()
         
         if warning is not None:
             warning.Destroy()
 
-    def listbox_select(self, event):
-        listBox = event.widget
-        selection = listBox.curselection()
-        recipe = listBox.get(selection)
+    def recipe_select(self, event):
+        #selection = self.agitationEntry.get()
+        recipe = event.widget.get()
         
         data = app.dataController.recipes[recipe]
                 
@@ -1512,11 +1442,18 @@ class RecipesWindow(Frame):
         self.cat.set(data["category"])
         self.film.set(data["film"])
         self.name.set(recipe)
-        self.agitation.set(data["agitation"])
+                
+        if self.patternsBox.get(0, END) != ():
+            self.patternsBox.delete(0, END)
+                
+        for agitation in data["agitation"]:
+            #self.agitation.set(data["agitation"])
+            self.patternsBox.insert(END, agitation)
+                
         
         self.deleteButton.configure(state="normal")
         self.continueButton.configure(state="normal")
-
+        
     def confirm_delete(self):
         warningText = "You're about to delete an recipe and it cannot be undone.\nAre you sure you want to do it?"
                        
@@ -1524,6 +1461,16 @@ class RecipesWindow(Frame):
         
         warning.yesButton.configure(command=lambda: self.delete_entry(warning))
         warning.noButton.configure(command=lambda: warning.Destroy())
+
+    def add_pattern_to_recipe(self, event):
+        chosenPattern = self.agitationEntry.get()
+        self.agitationEntry.set("")
+        self.patternsBox.insert(END, chosenPattern)
+
+    def agitation_select(self, event):
+        pdb.set_trace()
+        self.selection = self.patternsBox.get(ACTIVE)
+        self.deleteButton.configure(state="normal")
 
 if __name__ == "__main__":
     app = PyLabApp()
