@@ -1132,6 +1132,7 @@ class Agitation(Frame):
     def listbox_select(self, event):
         listBox = event.widget
         selection = listBox.curselection()
+        #print(selection)
         agitation = listBox.get(selection)
         
         data = app.dataController.agitations[agitation]
@@ -1414,18 +1415,12 @@ class RecipesWindow(Frame):
         self.controller.read_json("recipe")
     
     def delete_entry(self, warning=None):
-        
-        pdb.set_trace()
-        
-        selection = self.patternsBox.curselection()
-        
-        if self.selection == "":
+        if len(self.selection) == 0:
             print("No item selected!")
         else:
-            self.patternsBox.delete(self.patternsBox.get(0, "end").index(self.selection))
-            #if app.dataController.delete_entry(self.selection, "recipe"):
-            #    app.dataController.update_widgets("recipe", selection, False)
-        
+            for item in self.selection:
+                self.patternsBox.delete(item)#self.patternsBox.get(0, "end").index(self.selection))
+            
         #self.clear_data()
         
         if warning is not None:
@@ -1468,8 +1463,9 @@ class RecipesWindow(Frame):
         self.patternsBox.insert(END, chosenPattern)
 
     def agitation_select(self, event):
-        pdb.set_trace()
-        self.selection = self.patternsBox.get(ACTIVE)
+        listBox = event.widget
+        self.selection = listBox.curselection()
+        #print(self.selection)
         self.deleteButton.configure(state="normal")
 
 if __name__ == "__main__":
