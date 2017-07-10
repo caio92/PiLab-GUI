@@ -90,9 +90,21 @@ class DataController:
     def update_widgets(self, wType, item=None, isInsert=None):
         if wType == "recipe":
             widgets = self.recipesWidgets
+            
+            recipes = list(self.recipes.keys())
+            
+            #for crete/edit window
             widgets["categoryBox"].configure(value=self.categories)
             widgets["filmBox"].configure(value=self.films)
-            widgets["nameBox"].configure(value=list(self.recipes.keys()))
+            widgets["nameBox"].configure(value=recipes)
+            
+            #run window
+            widgets["catList"].configure(value=self.categories)
+            widgets["catList"].current(0)
+            widgets["filmList"].configure(value=self.films)
+            widgets["filmList"].current(0)
+            widgets["recipeList"].configure(value=recipes)
+            
         else:
             widgets = self.agitationWidgets
             widgets["agitationBox"].configure(value=list(self.agitations.keys()))
@@ -143,7 +155,7 @@ class DataController:
         defaultText = errorText = "".join(["Error at ", list(data.keys())[0], "\n"]) 
                 
         if dataType == "recipe":
-            updateText = ["You're about to replace recipe", "and it cannot be undone.\n Continue?"]
+            updateText = ["You're about to replace recipe", "\nand it cannot be undone. Continue?"]
             warningTitle = "Recipe error: "
         else:
             updateText = ["You're about to replace agitation pattern", "and it cannot be undone.\n Continue?"]
@@ -155,6 +167,8 @@ class DataController:
             
             updateText.insert(1, item)
             updateText = " ".join(updateText)
+            
+            checkedAgitations = []
             
             if item == "":
                 errorText = "".join([errorText, "Name cannot be blank.\n"])
@@ -195,15 +209,16 @@ class DataController:
                         elif float(data[item][info]) <= 0:
                             errorText = "".join([errorText, "Temperature must be greater than 0.\n"])
                         continue
-                    if info == "agitation":
+                    if info == "agitations":
+                        if data[item][info] == []:
+                                errorText = "".join([errorText, "Agitations cannot be empty.\n"])
                         for agitation in data[item][info]:
-                            if agitation == "":
-                                errorText = "".join([errorText, "Agitation pattern cannot be blank.\n"])
-                            elif agitation not in self.agitations:
+                            if agitation not in self.agitations and agitation not in checkedAgitations:
                                 text = ["Agitation pattern", "doesn't exist.\n"]
-                                text.insert(1, data[item][info])
+                                text.insert(1, agitation)
                                 text = " ".join(text)
                                 errorText = "".join([errorText, text])
+                                checkedAgitations.append(agitation)
                         continue
                 else:
                     if info == "interval":
@@ -279,7 +294,33 @@ class DataController:
                 conflicts.append(recipe)
                 
         return conflicts
+     
+    def filter_data(self, dataType, param, pValue, dataIn=[]):
+        filteredData = []
+        dataToFilter = {}
         
+        if dataType == "recipes":
+            if dataIn:
+                for key, value in self.recipes.items():
+                    if key in dataIn:
+                        dataToFilter[key] = self.recipes[key]
+            else:
+                dataToFilter = self.recipes
+                
+        else:
+            if dataIn:
+                for key, value in self.agitations.items():
+                    if key in dataIn:
+                        dataToFilter[key] = self.recipes[key]
+            else:
+                dataToFilter = self.recipes
+            
+        for key, value in dataToFilter.items():
+            if dataToFilter[key][param] == pValue:
+                filteredData.append(key)
+                    
+        return filteredData
+         
 class PyLabApp (Tk):
     
     def __init__(self, *args, **kwargs):
@@ -358,7 +399,7 @@ class PyLabApp (Tk):
     
     def build_app(self):
         self.frames = {}
-        for F in (MainPage, GetTemperatures, SetTemperature, RunEditRecipe, Agitation, NewAgitationCheck, RecipesWindow):
+        for F in (MainPage, GetTemperatures, SetTemperature, RunRecipe, Agitation, NewAgitationCheck, RecipesWindow):
             page_name = F.__name__
             frame = F(parent=self.container, controller=self)
             self.frames[page_name] = frame
@@ -476,27 +517,6 @@ class GUIWarningWindow:
         self.warning.deiconify()
 
 class MainPage(Frame):
- 
-    def ScaleButtonClick(self, button):
-        if button.buttonToggle:
-            button.ToggleText()
-            buttonText = button.GetText()
-
-            #ler sensor da balanca aqui
-
-            app.SetParam(button.GetButton(), "anchor", 'n')
-
-            buttonText += scaleReadingText
-            button.SetText(buttonText)
-            
-        else:
-            button.ToggleText()
-            app.SetParam(button.GetButton(), "anchor", 'center')
-
-    def UpdateScale(self, button):
-        #funcao que faz a leitura do sensor aqui!!
-        pass
-
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.controller = controller
@@ -540,8 +560,8 @@ class MainPage(Frame):
 
         #declara os botoes dos frames
         scaleButton = scaleButtonGUI.GetButton()
-        newRecipeButton = Button(recipesFrame, text="Criar\nReceita", width=5, command=lambda: controller.show_frame("NewAgitationCheck"))
-        useRecipeButton = Button(recipesFrame, text="Executar\nou\nEditar\nReceita", width=5, command=lambda: controller.show_frame("RunEditRecipe"))
+        newRecipeButton = Button(recipesFrame, text="Criar\nou\nEditar\nReceita", width=5, command=lambda: controller.show_frame("NewAgitationCheck"))
+        useRecipeButton = Button(recipesFrame, text="Executar\nReceita", width=5, command=lambda: controller.show_frame("RunRecipe"))
         adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5, command=lambda: controller.show_frame("SetTemperature"))
         measureTempButton = Button(temperatureFrame, text="Medir\nTemp.", width=5, command=lambda: controller.show_frame("GetTemperatures"))
         allButton = Button(allFrame, text="Rotina Completa")
@@ -553,6 +573,26 @@ class MainPage(Frame):
         adjustTempButton.grid(column=0, row=0, sticky='news')
         measureTempButton.grid(column=1, row=0, sticky='news')
         allButton.grid(row=0, column=0, sticky='news')
+ 
+    def ScaleButtonClick(self, button):
+        if button.buttonToggle:
+            button.ToggleText()
+            buttonText = button.GetText()
+
+            #ler sensor da balanca aqui
+
+            app.SetParam(button.GetButton(), "anchor", 'n')
+
+            buttonText += scaleReadingText
+            button.SetText(buttonText)
+            
+        else:
+            button.ToggleText()
+            app.SetParam(button.GetButton(), "anchor", 'center')
+
+    def UpdateScale(self, button):
+        #funcao que faz a leitura do sensor aqui!!
+        pass
 
 class GetTemperatures(Frame):
 
@@ -833,12 +873,18 @@ class SetTemperature(Frame):
                      name="returnButton")
         backButton.grid(row=0, column=1, sticky='news')
 
-class RunEditRecipe(Frame):
+class RunRecipe(Frame):
     def __init__(self, parent, controller):
         Frame.__init__(self, parent)
         self.controller = controller
         
-        rowWidth = [50, 110, 55]
+        self.activeFilters = {
+                                "category": "All",
+                                "film": "All"
+                             }
+        self.filteredRecipes = None
+        
+        rowWidth = [50, 115, 50]
 
         #define quatro frames iniciais
         rowFrame1 = Frame (self, width=300, height=rowWidth[0])#, bg='cyan')
@@ -846,7 +892,10 @@ class RunEditRecipe(Frame):
         rowFrame3 = Frame (self, width=300, height=rowWidth[2])#, bg='green')
         sortFrame = Frame (rowFrame2, width=200, height=rowWidth[1])#, bd=5)#\
                            #borderwidth=1, bg="black")
-        filterFrame = Frame(rowFrame2, width=100, height=rowWidth[1])
+                           
+        filterParentFrame = Frame(rowFrame2, width=100, height=rowWidth[1])
+        filterFrame = Frame(filterParentFrame, width=100, height=rowWidth[1]-25, bd=1, bg='black')
+        
         filmFrame = Frame(filterFrame, width=100, height=rowWidth[1]/2)
         catFrame = Frame(filterFrame, width=100, height=rowWidth[1]/2)
         recipeFrame = Frame(rowFrame1, width=300, height=rowWidth[0])
@@ -874,6 +923,10 @@ class RunEditRecipe(Frame):
         sortFrame.grid_rowconfigure(0, weight=1)
         sortFrame.grid_rowconfigure(1, weight=1)
         
+        filterParentFrame.grid_columnconfigure(0, weight=1)
+        filterParentFrame.grid_rowconfigure(0, weight=1)
+        filterParentFrame.grid_rowconfigure(1, weight=1)
+        
         filterFrame.grid_columnconfigure(0, weight=1)
         filterFrame.grid_rowconfigure(0, weight=1)
         filterFrame.grid_rowconfigure(1, weight=1)
@@ -896,6 +949,7 @@ class RunEditRecipe(Frame):
 
         sortFrame.grid_propagate(False)
         filterFrame.grid_propagate(False)
+        filterParentFrame.grid_propagate(False)
         sortButtonsFrame.grid_propagate(False)
         recipeFrame.grid_propagate(False)
         filmFrame.grid_propagate(False)
@@ -911,63 +965,159 @@ class RunEditRecipe(Frame):
         
         recipeFrame.grid(row=0, column=0)#, pady=(2.25,7.5), padx=7.5)
         
-        filterFrame.grid(row=0, column=0)
+        filterParentFrame.grid(column=1, row=0)
+        filterFrame.grid(row=1, column=0)
+        
         catFrame.grid(row=1, column=0)#, pady=(2.25,7.5), padx=7.5)
         filmFrame.grid(row=0, column=0)#, pady=(2.25,7.5), padx=7.5)
         
-        sortFrame.grid(row=0, column=1)#, pady=(2.25,7.5), padx=7.5)
+        sortFrame.grid(row=0, column=0)#, pady=(2.25,7.5), padx=7.5)
         sortButtonsFrame.grid(row=1, column=0)#, pady=(2.25,7.5), padx=7.5)
         
-        listFont = font.Font(size=11)
+        listFont = font.Font(size=10)
+        
+        filterLabel = Label(filterParentFrame, text="Filter by:", font=titleFont)
+        filterLabel.grid(row=0, column=0)
         
         catLabel = Label(catFrame, text="Category:", font=titleFont)
         filmLabel = Label(filmFrame, text="Film:", font=titleFont)
-        recipeLabel = Label(recipeFrame, text="Recipe:", font=titleFont)
+        recipeLabel = Label(recipeFrame, text="Recipe to Run:", font=titleFont)
         sortLabel = Label(sortFrame, text="Sort Recipes:", font=titleFont)
         
         catLabel.grid(row=0, column=0, sticky="news")
         filmLabel.grid(row=0, column=0, sticky="news")
         recipeLabel.grid(row=0, column=0, sticky="news")
         sortLabel.grid(row=0, column=0, sticky="news")
-        
-        categories = ["All", "B&W", "C41", "E6"]
-        
-        films = ["All", "Tri-X", "Velvia", "All", "Tri-X", "Velvia", "All", "Tri-X", "Velvia", "All", "Tri-X", "Velvia", "All", "Tri-X", "Velvia"]
-
-        recipes = ["Caffenol Stand", "Pa-Rodinal 1:50", "Xtol 1:10"]
 
         catVar = StringVar()
-        catVar.set(categories[0])
+        catVar.set("All")
         filmVar = StringVar()
-        filmVar.set(films[0])
+        filmVar.set("All")
         recipeVar = StringVar()
-        recipeVar.set(recipes[0])
         
-        recipeList = Combobox(recipeFrame, values=recipes, textvariable = recipeVar, font=listFont)
+        self.recipeList = Combobox(recipeFrame, textvariable = recipeVar, font=listFont)
         
-        filmList = Combobox(filmFrame, values=films, textvariable = filmVar, height=7, font=listFont)
-        catList = Combobox(catFrame, values=categories, textvariable = catVar, height=4, font=listFont)
-        #catList = OptionMenu(catFrame, catVar, *categories)
-        #recipeList = OptionMenu(recipeFrame, recipeVar, *recipes)
-        #filmList = OptionMenu(filmFrame, filmVar, *films)
+        self.filmList = Combobox(filmFrame, textvariable = filmVar, height=7, font=listFont)
+        self.catList = Combobox(catFrame, textvariable = catVar, height=4, font=listFont)
+
+        controller.dataController.add_widget(self.filmList, "recipe", "filmList")
+        controller.dataController.add_widget(self.catList, "recipe", "catList")
+        controller.dataController.add_widget(self.recipeList, "recipe", "recipeList")
         
-        catList.grid(row=1, column=0, sticky="nsew")
-        recipeList.grid(row=1, column=0, sticky="nsew")
-        filmList.grid(row=1, column=0, sticky="nsew")
+        self.catList.bind("<<ComboboxSelected>>", self.filter_recipes)
+        self.filmList.bind("<<ComboboxSelected>>", self.filter_recipes)
+        
+        self.catList.grid(row=1, column=0, sticky="nsew")
+        self.recipeList.grid(row=1, column=0, sticky="nsew")
+        self.filmList.grid(row=1, column=0, sticky="nsew")
         
         backButton = Button(rowFrame3, text="Voltar", width=1, \
                      command=lambda: self.controller.show_frame("MainPage"))
         backButton.grid(row=0, column=2, sticky='news')
         runButton = Button(rowFrame3, text="Run Recipe", width=1)
         runButton.grid(row=0, column=0, sticky='news')
-        editButton = Button(rowFrame3, text="Edit Recipe", width=1)
-        editButton.grid(row=0, column=1, sticky='news')
+        clearButton = Button(rowFrame3, text="Clear All", width=1, \
+                      command=lambda: self.clear_all())
+        clearButton.grid(row=0, column=1, sticky='news')
         
-        azButton = Button(sortButtonsFrame, text="A to Z", width=1)
+        azButton = Button(sortButtonsFrame, text="A to Z", width=1, \
+                   command=lambda: self.sort_recipes())
         azButton.grid(row=0, column=0, sticky='nsew')
-        zaButton = Button(sortButtonsFrame, text="Z to A", width=1)
+        zaButton = Button(sortButtonsFrame, text="Z to A", width=1, \
+                   command=lambda: self.sort_recipes(reverse=True))
         zaButton.grid(row=0, column=1, sticky='nsew')
 
+    def filter_recipes(self, event):
+        fValue = event.widget.get()
+        filteredRecipes = []
+        cats = ["All"]
+        films = ["All"]
+        changed = False
+        
+        #filteredRecipes = list(self.controller.dataController.recipes.keys())
+        
+        if event.widget is self.catList:
+            isCat = True
+
+            if fValue != self.activeFilters["category"]:
+                changed = True
+                self.activeFilters.update({"category": fValue})
+                
+        else:
+            isCat = False
+            
+            if fValue != self.activeFilters["film"]:
+                changed = True
+                self.activeFilters.update({"film": fValue})
+                
+        if self.activeFilters["category"] == "All" and  self.activeFilters["film"] == "All":
+            filteredRecipes = list(self.controller.dataController.recipes.keys())
+        else:
+            for key, value in self.activeFilters.items():
+                if not changed or value == "All":
+                    continue
+                                
+                filteredRecipes = self.controller.dataController.filter_data("recipes", key, value, filteredRecipes)
+                
+                if key == "category" and isCat:
+                    listToAppend = films
+                    recipeKey = "film"
+                    widgetToUpdate = self.filmList
+                
+                elif key == "film" and not isCat:
+                    listToAppend = cats
+                    recipeKey = "category"
+                    widgetToUpdate = self.catList
+                else:
+                    continue
+                    
+                if value == "All":
+                    lookupList = list(self.controller.dataController.recipes.keys())
+                else:
+                    lookupList = filteredRecipes
+                    
+                for recipe in lookupList:
+                    item = self.controller.dataController.recipes[recipe][recipeKey]
+                    
+                    if item not in listToAppend:
+                        listToAppend.append(item)
+                    
+                widgetToUpdate.config(value=listToAppend)
+            
+        if changed:
+            self.recipeList.config(values=filteredRecipes)        
+                
+            self.filteredRecipes = filteredRecipes
+        
+    def clear_all(self):
+        self.recipeList.config(values=list(self.controller.dataController.recipes.keys()))
+        self.filmList.config(value=self.controller.dataController.films)
+        self.catList.config(value=self.controller.dataController.categories)
+        
+        self.activeFilters = {
+                                "category": "All",
+                                "film": "All"
+                             }
+                             
+        self.filmList.current(0)
+        self.catList.current(0)
+        self.filteredRecipes = None
+        
+    def sort_recipes(self, reverse=False):
+        try:
+            if  len(self.filteredRecipes) == 0:
+                recipesToSort = list(self.controller.dataController.recipes.keys())
+            else:
+                recipesToSort = self.filteredRecipes
+            
+            #recipesToSort.sort(reverse=reverse)
+            #self.recipeList.config(values=recipesToSort)
+        except:
+            recipesToSort = list(self.controller.dataController.recipes.keys())
+            
+        recipesToSort.sort(reverse=reverse)
+        self.recipeList.config(values=recipesToSort)
+            
 class Agitation(Frame):
     def __init__(self, parent, controller):
         
@@ -1072,7 +1222,8 @@ class Agitation(Frame):
         saveButton = Button(buttonsFrame, text="Save", height=1, \
                      command=lambda: self.save_data())
         saveButton.grid(row=1, column=0, sticky='news')
-        self.continueButton = Button(buttonsFrame, text="Continue", height=1, state="disabled")
+        self.continueButton = Button(buttonsFrame, text="Continue", \
+                     height=1, command=lambda: controller.show_frame("RecipesWindow"))
         self.continueButton.grid(row=0, column=0, sticky='news')
         self.deleteButton = Button(buttonsFrame, text="Delete", height=1, \
                        command=lambda: self.confirm_delete(), state="disabled")
@@ -1154,7 +1305,7 @@ class Agitation(Frame):
         self.totalTime.set("")
         
         self.deleteButton.configure(state="disabled")
-        self.continueButton.configure(state="disabled")
+        #self.continueButton.configure(state="disabled")
     
     def load_data(self):
         self.controller.read_json("agitation")
@@ -1191,6 +1342,8 @@ class Agitation(Frame):
         
         self.clear_data()
         
+        self.deleteButton.configure(state="disabled")
+        
         if warning is not None:
             warning.Destroy()
     
@@ -1221,7 +1374,7 @@ class NewAgitationCheck(Frame):
         agitationButton = Button(rowFrame1, text="Create or Edit Agitation Patterns", height=1, \
                      command=lambda: controller.show_frame("Agitation"))
         agitationButton.grid(row=0, column=0, sticky='news')
-        recipeButton = Button(rowFrame1, text="Create New Recipe", height=1, \
+        recipeButton = Button(rowFrame1, text="Create or Edit Recipes", height=1, \
                      command=lambda: controller.show_frame("RecipesWindow"))
         recipeButton.grid(row=1, column=0, sticky='news')
 
@@ -1378,13 +1531,13 @@ class RecipesWindow(Frame):
                                     "duration": self.duration.get(),
                                     "film": self.film.get(),
                                     "temperature": self.temp.get(),
-                                    "agitations": self.patternsBox.get(0, END)
+                                    "agitations": list(self.patternsBox.get(0, END))
                                 }
                     }
-                
         if not isUpdate:
             if app.dataController.validate_data(newRecipe, "recipe", self):               
                 app.dataController.add_recipe(newRecipe)
+                app.dataController.update_widgets("recipe")
             
                 self.clear_data()
             
@@ -1404,12 +1557,13 @@ class RecipesWindow(Frame):
         self.film.set("")
         self.temp.set("")
         self.duration.set("")
-        self.agitation.set("")
+        
+        self.patternsBox.delete(0, END)
         
         self.deleteButton.configure(state="disabled")
-        self.continueButton.configure(state="disabled")
+        #self.continueButton.configure(state="disabled")
         
-        self.selection = ""
+        self.selection = ()
     
     def load_data(self):
         self.controller.read_json("recipe")
@@ -1422,6 +1576,8 @@ class RecipesWindow(Frame):
                 self.patternsBox.delete(item)#self.patternsBox.get(0, "end").index(self.selection))
             
         #self.clear_data()
+        
+        self.deleteButton.configure(state="disabled")
         
         if warning is not None:
             warning.Destroy()
@@ -1441,7 +1597,7 @@ class RecipesWindow(Frame):
         if self.patternsBox.get(0, END) != ():
             self.patternsBox.delete(0, END)
                 
-        for agitation in data["agitation"]:
+        for agitation in data["agitations"]:
             #self.agitation.set(data["agitation"])
             self.patternsBox.insert(END, agitation)
                 
