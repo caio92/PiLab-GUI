@@ -4,9 +4,8 @@ import gc
 from time import sleep
 import threading
 import RPi.GPIO as GPIO
-#from hx711py3.scale import Scale
+from hx711py3.scale import Scale
 from hx711py3.hx711 import HX711
-#from hx711 import HX711
 
 import pdb
 
@@ -24,6 +23,8 @@ class Tank():
 class PeripheralsController():
     
     def __init__(self):
+        GPIO.setmode(GPIO.BOARD)
+        
         self.setupTime = 3
         self.tanks = {}
         self.usedPins = []
@@ -36,10 +37,16 @@ class PeripheralsController():
         
         self.registeredTanks = False
         
-        GPIO.setmode(GPIO.BOARD)
+        self.scaleActive = False
+        self.scaleOut = None
+        self.scaleReader = ScaleReader(self)
+        
+        self.scale = Scale(source=HX711(dout=38, pd_sck=40))
+        self.scale.powerDown()
+        
         if gc.isenabled():
             print("GC Enabled!")
-
+        
     def CheckPin(self, pin):
         if pin not in self.usedPins:
             return True
@@ -95,15 +102,6 @@ class PeripheralsController():
                 
             except (KeyboardInterrupt, SystemExit):
                 GPIO.cleanup()
-
-    def CalibrateScale(self, hx):
-        hx.setReferenceUnit(1)
-        
-        val = hx.getWeight()
-        print("{0: 4.4f}".format(val))
-        input("Press enter to continue calibraion.")
-        val = hx.getWeight()
-        print("{0: 4.4f}".format(val))
 
     def RegisterTherms(self):
         
@@ -163,7 +161,59 @@ class PeripheralsController():
             
     def cleanup(self):
         GPIO.cleanup()
+    
+    def calibrate_scale(self):
+        referenceSet = False
         
+        hx = HX711(dout=38, pd_sck=40)
+        hx.powerUp()
+        
+        input("Remove all objects on the scale and press [Enter] to continue.")
+        
+        val1 = hx.getWeight()
+        
+        input("Place the reference weight on the scale and press [Enter] to continue.")
+        
+        while not referenceSet:
+            try:
+                inWeight = float(input("Insert the weight (in grams) of your reference: "))
+                referenceSet = True
+            except ValueError:
+                print("Please, insert a valid number")
+        
+        val2 = hx.getWeight()
+        
+        reference = (val1 - val2)/inWeight
+        
+        print("Your reference unit is: {0: 4.4f}".format(val))
+        
+        hx.powerDown()
+        
+        return reference
+    
+    def set_scale_reference(self, reference):
+        self.scale.setReferenceUnit(reference)
+        
+    def get_measure(self):
+        self.scaleOut.set(self.scale.getMeasure())
+        
+    def activate_scale(self):
+        if not self.scaleActive:
+            self.scaleActive = True
+            self.getWeightThread = threading.Thread(target=self.scaleReader.Start)
+            self.getWeightThread.start()
+            print("Started reading scale")
+        
+    def deactivate_scale(self):
+        self.scaleActive = False
+        if self.scaleActive and self.getWeightThread.is_alive():
+            self.getWeightThread.join()
+            
+        print("Stopped reading scale")
+
+    def set_scale_out(self, textVar):
+        self.scaleOut = textVar
+
 class TemperatureReader():
     def __init__(self, pController):
         self.pController = pController  
@@ -172,3 +222,15 @@ class TemperatureReader():
         while self.pController.activeTanks:
             for tank in self.pController.activeTanks:
                 self.pController.GetTemperature(tank)       
+
+class ScaleReader():
+    def __init__(self, pController):
+        self.pController = pController  
+    
+    def Start(self):
+        self.pController.scale.powerUp()
+        
+        while self.pController.scaleActive:
+            self.pController.get_measure()
+            
+        self.pController.scale.powerDown()

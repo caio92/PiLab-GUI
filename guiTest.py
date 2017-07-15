@@ -6,6 +6,7 @@ from w1thermsensor import W1ThermSensor
 
 import os
 import json
+import configparser
 import peripherals
 
 import pdb
@@ -19,6 +20,7 @@ defaultDir = "./ConfigFiles/"
 
 recipesFile = defaultDir + "recipes.conf"
 agitationFile = defaultDir + "agitation.conf"
+configFile = defaultDir + "config.ini"
 
 class DataController:
     def __init__(self):
@@ -336,8 +338,25 @@ class PyLabApp (Tk):
         self.dataController = DataController()
         self.pController = peripherals.PeripheralsController()
         
+        self.sections = ["Scale", "Temperature", "Language"]
+        self.tempSubSections = ["TemperatureUnit"]
+        self.langSubSections = ["Language"]
+        self.scaleSubSections = ["ReferenceUnit"]
+        
         self.tanks = []
         
+        self.config = {
+                        self.sections[0]: {
+                                        self.scaleSubSections[0]: ""
+                                     },
+                        self.sections[1]: { 
+                                        self.tempSubSections[0]: "Celsius"
+                                     },
+                        self.sections[2]: {
+                                        self.langSubSections[0]: "en-US"
+                                     }
+                      } 
+                
         global titleFont
         titleFont = font.Font(size=10, weight="bold")
 
@@ -426,12 +445,41 @@ class PyLabApp (Tk):
             self.tanks.append(tankConf[0])
                 
         self.pController.RegisterTherms()
+        
+        if not self.config[self.sections[0]][self.scaleSubSections[0]]:
+            reference = self.pController.calibrate_scale()
+            self.config[self.sections[0]][self.scaleSubSections[0]] = reference
+            
+            self.write_config(self.config)
+            
+        self.pController.set_scale_reference(float(self.config[self.sections[0]][self.scaleSubSections[0]]))
     
     def on_closing(self):
         print ("Fechando ça'porra")
         self.pController.cleanup()
         self.destroy()
         
+    def read_config(self):
+        config = configparser.ConfigParser()
+        config.read(configFile)
+        
+        #sections = config.sections()
+        
+        try: 
+            self.config[self.sections[0]][self.scaleSubSections[0]] = \
+                        config[self.sections[0]][self.scaleSubSections[0]]
+        except KeyError:
+            print("INI file error at Scale section")
+        
+    def write_config(self, data):
+        config = configparser.ConfigParser()
+        
+        for i in range(len(self.config)):
+            config[self.sections[i]] = self.config[self.sections[i]]
+        
+        with open(configFile, 'w') as confFile:
+            config.write(confFile)
+            
 class GUIButton:
     def __init__(self, buttonType, master, **kwargs):
         #self.button = tkButton
@@ -573,7 +621,8 @@ class MainPage(Frame):
 
         #cria estrutura de dados dos botoes
         scaleButtonGUI = GUIButton("scale", scaleFrame, command=lambda: self.ScaleButtonClick(scaleButtonGUI))
-
+        app.pController.set_scale_out(scaleButtonGUI.buttonTextVar)        
+        
         #declara os botoes dos frames
         scaleButton = scaleButtonGUI.GetButton()
         newRecipeButton = Button(recipesFrame, text="Criar\nou\nEditar\nReceita", width=5, command=lambda: controller.show_frame("NewAgitationCheck"))
@@ -592,6 +641,7 @@ class MainPage(Frame):
  
     def ScaleButtonClick(self, button):
         if button.buttonToggle:
+            #turn on scale reading
             button.ToggleText()
             buttonText = button.GetText()
 
@@ -599,10 +649,17 @@ class MainPage(Frame):
 
             app.set_param(button.GetButton(), "anchor", 'n')
 
-            buttonText += scaleReadingText
-            button.SetText(buttonText)
+            #buttonText += scaleReadingText
+            #button.SetText(buttonText)
+            
+            app.pController.activate_scale()
+            
+            #pdb.set_trace()
             
         else:
+            #turn off scale reading
+            app.pController.deactivate_scale()
+
             button.ToggleText()
             app.set_param(button.GetButton(), "anchor", 'center')
 
@@ -1068,7 +1125,7 @@ class RunRecipe(Frame):
                 self.catList.config(value=self.controller.dataController.categories)
                 self.filmList.config(value=self.controller.dataController.films)
                 
-            elif:
+            elif changed:
                 for key, value in self.activeFilters.items():
                     if value != "All":
                         filteredRecipes = self.controller.dataController.filter_data("recipes", key, value, filteredRecipes)
@@ -1673,6 +1730,9 @@ if __name__ == "__main__":
     app = PyLabApp()
     
     app.protocol("WM_DELETE_WINDOW", app.on_closing)
+    
+    if os.path.isfile(configFile):
+        app.read_config()
     
     app.setup_app() 
     
