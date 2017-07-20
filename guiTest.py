@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from tkinter import *
 from tkinter import font
-from tkinter.ttk import Combobox
+from tkinter.ttk import Combobox, Notebook, Style, Labelframe
 from w1thermsensor import W1ThermSensor
 
 import os
@@ -12,7 +12,7 @@ import peripherals
 import pdb
 
 scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
-scaleReadingText = "\n\n Leitura atual:\nMUITOS KGs"
+scaleReadingText = "\n\n Leitura atual:\n"
 onOffText = ["Turn\nOn", "Turn\nOff"]
 runText = ["Run", "Running"]
 
@@ -429,7 +429,7 @@ class PyLabApp (Tk):
     
     def build_app(self):
         self.frames = {}
-        for F in (MainPage, GetTemperatures, SetTemperature, RunRecipe, Agitation, NewAgitationCheck, RecipesWindow):
+        for F in (MainPage, GetTemperatures, SetTemperature, RunRecipe, Agitation, NewAgitationCheck, RecipesWindow, PreferencesPane):
             page_name = F.__name__
             frame = F(parent=self.container, controller=self)
             self.frames[page_name] = frame
@@ -457,7 +457,10 @@ class PyLabApp (Tk):
     def on_closing(self):
         print ("Fechando ça'porra")
         self.pController.cleanup()
+        self.pController.stop_all()
+        print ("Saionara, bitches!")
         self.destroy()
+        sys.exit()
         
     def read_config(self):
         config = configparser.ConfigParser()
@@ -498,6 +501,7 @@ class GUIButton:
 
         if buttonType == "scale":
             self.buttonText = scaleText
+            self.readingText = scaleReadingText
         elif buttonType == "measureTemp":
             self.buttonText = onOffText
         else:
@@ -505,12 +509,12 @@ class GUIButton:
             
         self.buttonTextVar.set(self.buttonText[0])
 
-    def ToggleText(self):
+    def ToggleText(self, inText=None):
                 
         if self.buttonToggle:
-            self.buttonTextVar.set(self.buttonText[1])
+            self.buttonTextVar.set(inText or self.buttonText[1])
         else:
-            self.buttonTextVar.set(self.buttonText[0])
+            self.buttonTextVar.set(inText or self.buttonText[0])
         
         if self.buttonType == "measureTemp":
             if self.buttonToggle:
@@ -621,7 +625,7 @@ class MainPage(Frame):
 
         #cria estrutura de dados dos botoes
         scaleButtonGUI = GUIButton("scale", scaleFrame, command=lambda: self.ScaleButtonClick(scaleButtonGUI))
-        app.pController.set_scale_out(scaleButtonGUI.buttonTextVar)        
+        app.pController.set_scale_out(scaleButtonGUI)        
         
         #declara os botoes dos frames
         scaleButton = scaleButtonGUI.GetButton()
@@ -629,7 +633,7 @@ class MainPage(Frame):
         useRecipeButton = Button(recipesFrame, text="Executar\nReceita", width=5, command=lambda: controller.show_frame("RunRecipe"))
         adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5, command=lambda: controller.show_frame("SetTemperature"))
         measureTempButton = Button(temperatureFrame, text="Medir\nTemp.", width=5, command=lambda: controller.show_frame("GetTemperatures"))
-        allButton = Button(allFrame, text="Rotina Completa")
+        allButton = Button(allFrame, text="Preferences", command=lambda: controller.show_frame("PreferencesPane"))
 
         #coloca os botoes no grid do frame
         newRecipeButton.grid(column=0, row=0, sticky='news')
@@ -642,30 +646,15 @@ class MainPage(Frame):
     def ScaleButtonClick(self, button):
         if button.buttonToggle:
             #turn on scale reading
-            button.ToggleText()
-            buttonText = button.GetText()
-
-            #ler sensor da balanca aqui
-
-            app.set_param(button.GetButton(), "anchor", 'n')
-
-            #buttonText += scaleReadingText
-            #button.SetText(buttonText)
-            
+            button.ToggleText("Setting up scale...") 
             app.pController.activate_scale()
-            
-            #pdb.set_trace()
-            
+                       
         else:
             #turn off scale reading
             app.pController.deactivate_scale()
 
             button.ToggleText()
             app.set_param(button.GetButton(), "anchor", 'center')
-
-    def UpdateScale(self, button):
-        #funcao que faz a leitura do sensor aqui!!
-        pass
 
 class GetTemperatures(Frame):
 
@@ -1725,6 +1714,139 @@ class RecipesWindow(Frame):
             self.controller.show_frame("RunRecipe", carryData)
         except:
             self.controller.show_frame("RunRecipe")
+
+class PreferencesPane(Frame):
+    def __init__(self, parent, controller):
+        Frame.__init__(self, parent)
+        self.controller = controller
+        
+        noteStyle = Style()
+        noteStyle.theme_create( "NoteStyle", parent="alt", settings={
+        "TNotebook.Tab": {"configure": {"padding": [5, 12, 5, 12] }}})
+        
+        noteStyle.theme_use("NoteStyle")
+        
+        rowHeight = [190, 40]
+        rowWidth = 310
+        
+        entryFont = font.Font(size=20)
+                
+        noteFrame = Frame(self, height=rowHeight[0], width=rowWidth)
+        buttonsFrame = Frame(self, height=rowHeight[1], width=rowWidth)
+        
+        buttonsFrame.grid_rowconfigure(0, weight=1)
+        buttonsFrame.grid_columnconfigure(0, weight=1)
+        buttonsFrame.grid_columnconfigure(1, weight=1)
+        buttonsFrame.grid_columnconfigure(2, weight=1)
+        
+        noteFrame.grid_rowconfigure(0, weight=1)
+        noteFrame.grid_columnconfigure(0, weight=1)
+
+        buttonsFrame.grid_propagate(False)
+        noteFrame.grid_propagate(False)
+        
+        noteFrame.grid(column=0, row=0, sticky="news", padx=5, pady=(5,0))
+        buttonsFrame.grid(column=0, row=1, sticky="news", padx=5, pady=(0,5))
+        
+        backButton = Button(buttonsFrame, text="Cancel", width=1, \
+                     command=lambda: controller.show_frame("MainPage"))
+        backButton.grid(row=0, column=2, sticky='news')
+        okButton = Button(buttonsFrame, text="Ok", width=1, \
+                     command=lambda: controller.show_frame("MainPage"))
+        okButton.grid(row=0, column=0, sticky='news')
+        applyButton = Button(buttonsFrame, text="Apply", width=1, \
+                     command=lambda: controller.show_frame("MainPage"))
+        applyButton.grid(row=0, column=1, sticky='news')
+        
+        notebook = Notebook(noteFrame)
+        
+        tempFrame = Frame(notebook, width=rowWidth, height=rowHeight[0])
+        scaleFrame = Frame(notebook, width=rowWidth, height=rowHeight[0])
+        interfaceFrame = Frame(notebook, width=rowWidth, height=rowHeight[0])
+        
+        tempFrame.grid_propagate(False)
+        scaleFrame.grid_propagate(False)
+        interfaceFrame.grid_propagate(False)
+        
+        tempFrame.grid_rowconfigure(0, weight=1)
+        tempFrame.grid_rowconfigure(1, weight=1)
+        tempFrame.grid_columnconfigure(0, weight=1)
+        tempFrame.grid_columnconfigure(1, weight=1)
+        
+        scaleFrame.grid_rowconfigure(0, weight=1)
+        scaleFrame.grid_rowconfigure(1, weight=1)
+        scaleFrame.grid_columnconfigure(0, weight=1)
+        scaleFrame.grid_columnconfigure(1, weight=1)
+        
+        interfaceFrame.grid_rowconfigure(0, weight=1)
+        interfaceFrame.grid_rowconfigure(1, weight=1)
+        interfaceFrame.grid_columnconfigure(0, weight=1)
+        interfaceFrame.grid_columnconfigure(1, weight=1)
+        
+        notebook.add(tempFrame, text="Temperature", sticky="news")
+        notebook.add(scaleFrame, text="Weight Scale", sticky="news")
+        notebook.add(interfaceFrame, text="Interface", sticky="news")
+        
+        notebook.grid(column=0, row=0, sticky="news")
+        
+        ## Temperature Unity Section ##
+        
+        tempUnitLabelFrame = Labelframe(tempFrame, text="Temperature Unit", borderwidth=2, relief="groove", width=(rowWidth)/2, height=(rowHeight[0]-3)/2)
+        tempUnitLabelFrame.grid(column=0, row=0, sticky="news", padx=(2,1), pady=(2,1))
+                
+        self.isCelsius = BooleanVar()
+        
+        celsiusRadio = Radiobutton(tempUnitLabelFrame, text="Celsius\n[°C]", width=8, variable=self.isCelsius, value=True, padx=3, pady=3, indicatoron=0)
+        fahrRadio = Radiobutton(tempUnitLabelFrame, text="Fahrenheit\n[°F]", width=8, variable=self.isCelsius, value=False, padx=3, pady=3, indicatoron=0)
+        
+        celsiusRadio.grid(column=0, row=0, sticky="news")
+        fahrRadio.grid(column=1, row=0, sticky="news")
+        
+        tempPlacesLabelFrame = Labelframe(tempFrame, text="Decimal Places", borderwidth=2, relief="groove", width=(rowWidth-6)/2, height=(rowHeight[0]-3)/2)
+        tempPlacesLabelFrame.grid(column=1, row=0, sticky="news", padx=(1,2), pady=(2,1))
+
+        self.tempDecimals = Entry(tempPlacesLabelFrame, font=entryFont, width=8)
+        self.tempDecimals.grid(column=0, row=0, sticky="news")
+        
+        tempPlacesLabelFrame.grid_propagate(False)
+        tempUnitLabelFrame.grid_propagate(False)
+        
+        ## Weigh Scale Section ##
+        
+        scaleUnitLabelFrame = Labelframe(scaleFrame, text="Scale Unit", borderwidth=2, relief="groove", width=(rowWidth)/2, height=(rowHeight[0]-3)/2)
+        scaleUnitLabelFrame.grid(column=0, row=0, sticky="news", padx=(2,1), pady=(2,1))
+                
+        self.isKg = BooleanVar()
+        
+        kgRadio = Radiobutton(scaleUnitLabelFrame, text="Grams\n[g]", width=8, variable=self.isKg, value=True, padx=3, pady=3, indicatoron=0)
+        ounceRadio = Radiobutton(scaleUnitLabelFrame, text="Ounces\n[oz]", width=8, variable=self.isKg, value=False, padx=3, pady=3, indicatoron=0)
+        
+        kgRadio.grid(column=0, row=0, sticky="news")
+        ounceRadio.grid(column=1, row=0, sticky="news")
+        
+        scalePlacesLabelFrame = Labelframe(scaleFrame, text="Decimal Places", borderwidth=2, relief="groove", width=(rowWidth-6)/2, height=(rowHeight[0]-3)/2)
+        scalePlacesLabelFrame.grid(column=1, row=0, sticky="news", padx=(1,2), pady=(2,1))
+
+        self.scaleDecimals = Entry(scalePlacesLabelFrame, font=entryFont, width=8)
+        self.scaleDecimals.grid(column=0, row=0, sticky="news")
+        
+        scalePlacesLabelFrame.grid_propagate(False)
+        scaleUnitLabelFrame.grid_propagate(False)
+        
+        ## General Section ##
+        
+        languageLabelFrame = Labelframe(interfaceFrame, text="Interface Language", borderwidth=2, relief="groove", width=(rowWidth-4), height=(rowHeight[0])/2)
+        languageLabelFrame.grid(column=0, row=0, sticky="news", padx=(2,1), pady=(2,1))
+        languageLabelFrame.grid_propagate(False)
+        
+        availableLanguages = ["pt-BR",  "en-US"]
+        
+        languageLabelFrame.option_add("*TCombobox*Listbox*Font", entryFont)
+        languageLabelFrame.option_add("*TCombobox*Font", entryFont)
+        
+        self.languageBox = Combobox(languageLabelFrame, values=availableLanguages, width=16)
+        self.languageBox.grid(column=0, row=0, sticky="news", padx=5)
+        
             
 if __name__ == "__main__":
     app = PyLabApp()

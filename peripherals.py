@@ -1,6 +1,6 @@
 from w1thermsensor import W1ThermSensor
 import gc
-#import sys
+import sys
 from time import sleep
 import threading
 import RPi.GPIO as GPIO
@@ -25,6 +25,8 @@ class PeripheralsController():
     def __init__(self):
         GPIO.setmode(GPIO.BOARD)
         
+        self.scaleInfo = []
+        
         self.setupTime = 3
         self.tanks = {}
         self.usedPins = []
@@ -33,7 +35,7 @@ class PeripheralsController():
         
         self.tempUnit = "°C"
         
-        self.threadLock = threading.Lock()
+        #self.scaleLock = threading.Lock()
         
         self.registeredTanks = False
         
@@ -41,7 +43,12 @@ class PeripheralsController():
         self.scaleOut = None
         self.scaleReader = ScaleReader(self)
         
-        self.scale = Scale(source=HX711(dout=38, pd_sck=40))
+        self.dout = 38
+        self.pd_sck = 40
+        
+        #GPIO.setup(self.dout, GPIO.IN)
+        
+        self.scale = Scale(source=HX711(dout=self.dout, pd_sck=self.pd_sck))
         self.scale.powerDown()
         
         if gc.isenabled():
@@ -165,11 +172,12 @@ class PeripheralsController():
     def calibrate_scale(self):
         referenceSet = False
         
-        hx = HX711(dout=38, pd_sck=40)
-        hx.powerUp()
+        hx = HX711(dout=self.dout, pd_sck=self.pd_sck)
+        hx.reset()
         
         input("Remove all objects on the scale and press [Enter] to continue.")
-        
+        hx.tare()
+        #GPIO.add_event_detect(self.dout, GPIO.FALLING, callback=hx.getWeight)
         val1 = hx.getWeight()
         
         input("Place the reference weight on the scale and press [Enter] to continue.")
@@ -181,21 +189,47 @@ class PeripheralsController():
             except ValueError:
                 print("Please, insert a valid number")
         
+        sleep(1)
         val2 = hx.getWeight()
         
-        reference = (val1 - val2)/inWeight
+        #reference = (val1 - val2)/inWeight
+        reference = (val2 - val1)/inWeight
+        #reference = val2/inWeight
         
-        print("Your reference unit is: {0: 4.4f}".format(val))
+        print("Your reference unit is: {0: 4.4f}".format(reference))
         
         hx.powerDown()
+        GPIO.remove_event_detect(self.dout)
         
         return reference
     
     def set_scale_reference(self, reference):
         self.scale.setReferenceUnit(reference)
         
-    def get_measure(self):
-        self.scaleOut.set(self.scale.getMeasure())
+    def get_measure(self, channel):
+        #pdb.set_trace()
+        #scaleMeasure = self.scale.getMeasure()
+        try:
+            #scaleMeasure = self.scale.getWeight()
+            scaleMeasure = self.scale.getMeasure()
+            button = self.scaleButton.GetButton()
+            button.config(anchor='n')
+            
+            if len(self.scaleInfo) > 1:
+            
+                scaleDiff = abs(scaleMeasure - float(self.scaleInfo[1]))
+                
+                if scaleDiff > 0.05:
+                    self.scaleInfo.pop(1)
+                    self.scaleInfo.append("{0: 4.2f}".format(scaleMeasure))
+                    self.scaleButton.SetText(''.join(self.scaleInfo))
+            else:
+                self.scaleInfo.append("{0: 4.2f}".format(scaleMeasure))
+                self.scaleButton.SetText(''.join(self.scaleInfo))
+
+            #sleep(0.2)
+        except: 
+            pass
         
     def activate_scale(self):
         if not self.scaleActive:
@@ -204,15 +238,46 @@ class PeripheralsController():
             self.getWeightThread.start()
             print("Started reading scale")
         
+        #self.scaleActive = True
+        #self.scale.reset()
+        #self.scale.tare()
+        #GPIO.add_event_detect(self.dout, GPIO.FALLING, callback=self.get_measure) 
+        
     def deactivate_scale(self):
         self.scaleActive = False
-        if self.scaleActive and self.getWeightThread.is_alive():
-            self.getWeightThread.join()
+        self.scale.powerDown()
+        #GPIO.remove_event_detect(self.dout)
+        #self.scaleButton.ToggleText()
+        #button = self.scaleButton.GetButton()
+        #button.config(anchor='center')
+        #if False and self.getWeightThread.is_alive():
+            #self.getWeightThread.join()
             
         print("Stopped reading scale")
 
-    def set_scale_out(self, textVar):
-        self.scaleOut = textVar
+    def set_scale_out(self, guiButton):
+        #self.scaleOut = textVar
+        self.scaleButton = guiButton
+        
+        buttonText = [guiButton.buttonText[1]]
+        buttonText.append(guiButton.readingText)
+        
+        self.scaleInfo.append(''.join(buttonText))
+
+    def stop_all(self):
+        print("Stopping all active threads")
+        
+        try:
+            if self.getWeightThread.is_alive():                    
+                self.deactivate_scale()
+                
+            if self.getTempThread.is_alive():
+                for tank in self.activeTanks:
+                    self.DeactivateTank(tank)
+        except:
+            pass
+
+        print("Stopped all active threads")
 
 class TemperatureReader():
     def __init__(self, pController):
@@ -228,9 +293,11 @@ class ScaleReader():
         self.pController = pController  
     
     def Start(self):
-        self.pController.scale.powerUp()
-        
-        while self.pController.scaleActive:
-            self.pController.get_measure()
-            
-        self.pController.scale.powerDown()
+        try:
+            self.pController.scale.reset()
+            self.pController.scale.tare()
+            while self.pController.scaleActive:
+                self.pController.get_measure()
+    
+        except:
+            print("Deu erro: ", sys.exc_info()[0])
