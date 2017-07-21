@@ -259,10 +259,12 @@ class PeripheralsController():
         #self.scaleOut = textVar
         self.scaleButton = guiButton
         
-        buttonText = [guiButton.buttonText[1]]
-        buttonText.append(guiButton.readingText)
+        buttonText = guiButton.buttonText[1]
+        #buttonText = [guiButton.buttonText[1]]
+        #buttonText.append(guiButton.readingText)
         
-        self.scaleInfo.append(''.join(buttonText))
+        #self.scaleInfo.append(''.join(buttonText))
+        self.scaleInfo.append(guiButton.buttonText[1])
 
     def stop_all(self):
         print("Stopping all active threads")

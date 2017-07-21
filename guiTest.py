@@ -11,17 +11,6 @@ import peripherals
 
 import pdb
 
-scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
-scaleReadingText = "\n\n Leitura atual:\n"
-onOffText = ["Turn\nOn", "Turn\nOff"]
-runText = ["Run", "Running"]
-
-defaultDir = "./ConfigFiles/"
-
-recipesFile = defaultDir + "recipes.conf"
-agitationFile = defaultDir + "agitation.conf"
-configFile = defaultDir + "config.ini"
-
 class DataController:
     def __init__(self):
         self.agitations = {}
@@ -338,11 +327,19 @@ class PyLabApp (Tk):
         self.dataController = DataController()
         self.pController = peripherals.PeripheralsController()
         
-        self.sections = ["Scale", "Temperature", "Language"]
-        self.tempSubSections = ["TemperatureUnit", "DecimalPlaces"]
-        self.generalSubSections = ["Language"]
-        self.scaleSubSections = ["ReferenceUnit", "DecimalPlaces", "WeightUnit"]
+        self.defaultConfigDir = "./ConfigFiles/"
+
+        self.recipesFile = self.defaultConfigDir + "recipes.conf"
+        self.agitationFile = self.defaultConfigDir + "agitation.conf"
+        self.configFile = self.defaultConfigDir + "config.ini"
+        self.languagesFile = self.defaultConfigDir + "supported_languages.conf"
         
+        self.sections = ["Scale", "Temperature", "Interface"]
+            
+        self.scaleSubSections = ["ReferenceUnit", "DecimalPlaces", "WeightUnit"]
+        self.tempSubSections = ["TemperatureUnit", "DecimalPlaces"]
+        self.interfaceSubSections = ["Language"]
+
         self.tanks = []
         
         self.config = {
@@ -356,7 +353,7 @@ class PyLabApp (Tk):
                                         self.tempSubSections[1]: "2"
                                      },
                         self.sections[2]: {
-                                        self.generalSubSections[0]: "en-US"
+                                        self.interfaceSubSections[0]: "en-US"
                                      }
                       } 
                 
@@ -371,9 +368,24 @@ class PyLabApp (Tk):
         self.container.grid_columnconfigure(0, weight=1)
 
         self.container.grid()
+        
+        self.interfaceText = {
+                            "MainPage": {
+                                "Buttons": {
+                                    "ScaleButtonOn": "Turn on\n scale",
+                                    "ScaleButtonOff": "Turn off scale\n\n",
+                                    "SettingUpScale": "Setting up scale...",
+                                    "CreateRecipe": "Create\nor\nEdit\nRecipe",
+                                    "RunRecipe": "Run\nRecipe",
+                                    "SetTemperature": "Control\nTemp.",
+                                    "GetTemperature": "Read\nTemp.",
+                                    "Preferences": "Preferences"
+                                    }
+                                }
+                            }
     
     def check_files(self):
-        directory = os.path.dirname(defaultDir)
+        directory = os.path.dirname(self.defaultConfigDir)
         if not os.path.exists(directory):
             os.mkdir(directory)
                                 
@@ -381,11 +393,11 @@ class PyLabApp (Tk):
         app.check_files()
         
         if dataType == "recipe":
-            directory = recipesFile
+            directory = self.recipesFile
             data = app.dataController.recipes
 
         else: 
-            directory = agitationFile
+            directory = self.agitationFile
             data = app.dataController.agitations
             
         with open(directory, 'w') as jsonFile:
@@ -397,10 +409,14 @@ class PyLabApp (Tk):
         app.check_files()
 
         if dataType == "recipe":
-            directory = recipesFile
-        else: 
-            directory = agitationFile
-        
+            directory = self.recipesFile
+        elif dataType == "agitation": 
+            directory = self.agitationFile
+        elif dataType == "language":
+            directory = self.languagesFile
+        else:
+            raise TypeError("Unkown type of file to read")
+            
         if os.stat(directory).st_size != 0:
             with open(directory, 'r') as jsonFile:
                 data = json.load(jsonFile)
@@ -430,7 +446,7 @@ class PyLabApp (Tk):
 
         return _list
     
-    def build_app(self):
+    def build_app(self):        
         self.frames = {}
         for F in (MainPage, GetTemperatures, SetTemperature, RunRecipe, Agitation, NewAgitationCheck, RecipesWindow, PreferencesPane):
             page_name = F.__name__
@@ -467,11 +483,13 @@ class PyLabApp (Tk):
         
     def read_config(self):
         config = configparser.ConfigParser()
-        config.read(configFile)
-        
-        try: 
-            self.config[self.sections[0]][self.scaleSubSections[0]] = \
-                        config[self.sections[0]][self.scaleSubSections[0]]
+        config.read(self.configFile)
+                
+        try:
+            for section, subsections in self.config.items():
+                for subsection, value in subsections.items():
+                    self.config[section][subsection] = config[section][subsection]
+
         except KeyError:
             print("INI file error at Scale section")
         
@@ -483,10 +501,31 @@ class PyLabApp (Tk):
         
         with open(configFile, 'w') as confFile:
             config.write(confFile)
+    
+    def parse_language(self):
+        if os.path.isfile(app.languagesFile):
+            
+            languages = self.read_json("language")
+            language = self.config["Interface"]["Language"] or "en-US"
+            
+            if language in languages:
+                self.interfaceText = languages[language]
+            elif "en-US" in languages:
+                self.interfaceText = languages["en-US"]
+            else:
+                print("Due to lack of valid options, choosing the default language")
             
 class GUIButton:
     def __init__(self, buttonType, master, **kwargs):
         #self.button = tkButton
+        
+        buttonsText = app.interfaceText["MainPage"]["Buttons"]
+        
+        self.scaleText = [buttonsText["ScaleButtonOn"], buttonsText["ScaleButtonOff"]]
+        #self.scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
+        #self.scaleReadingText = "\n\n Leitura atual:\n"
+        self.onOffText = ["Turn\nOn", "Turn\nOff"]
+        self.runText = ["Run", "Running"]
 
         if "textvariable" not in kwargs:
             self.buttonTextVar = StringVar()
@@ -501,12 +540,12 @@ class GUIButton:
         self.buttonType = buttonType
 
         if buttonType == "scale":
-            self.buttonText = scaleText
-            self.readingText = scaleReadingText
+            self.buttonText = self.scaleText
+            #self.readingText = scaleReadingText
         elif buttonType == "measureTemp":
-            self.buttonText = onOffText
+            self.buttonText = self.onOffText
         else:
-            self.buttonText = runText
+            self.buttonText = self.runText
             
         self.buttonTextVar.set(self.buttonText[0])
 
@@ -628,13 +667,15 @@ class MainPage(Frame):
         scaleButtonGUI = GUIButton("scale", scaleFrame, command=lambda: self.ScaleButtonClick(scaleButtonGUI))
         app.pController.set_scale_out(scaleButtonGUI)        
         
+        buttonsText = self.controller.interfaceText["MainPage"]["Buttons"]
+        
         #declara os botoes dos frames
         scaleButton = scaleButtonGUI.GetButton()
-        newRecipeButton = Button(recipesFrame, text="Criar\nou\nEditar\nReceita", width=5, command=lambda: controller.show_frame("NewAgitationCheck"))
-        useRecipeButton = Button(recipesFrame, text="Executar\nReceita", width=5, command=lambda: controller.show_frame("RunRecipe"))
-        adjustTempButton = Button(temperatureFrame, text="Ajustar\nTemp.", width=5, command=lambda: controller.show_frame("SetTemperature"))
-        measureTempButton = Button(temperatureFrame, text="Medir\nTemp.", width=5, command=lambda: controller.show_frame("GetTemperatures"))
-        allButton = Button(allFrame, text="Preferences", command=lambda: controller.show_frame("PreferencesPane"))
+        newRecipeButton = Button(recipesFrame, text=buttonsText["CreateRecipe"], width=5, command=lambda: controller.show_frame("NewAgitationCheck"))
+        useRecipeButton = Button(recipesFrame, text=buttonsText["RunRecipe"], width=5, command=lambda: controller.show_frame("RunRecipe"))
+        adjustTempButton = Button(temperatureFrame, text=buttonsText["SetTemperature"], width=5, command=lambda: controller.show_frame("SetTemperature"))
+        measureTempButton = Button(temperatureFrame, text=buttonsText["GetTemperature"], width=5, command=lambda: controller.show_frame("GetTemperatures"))
+        preferencesButton = Button(allFrame, text=buttonsText["Preferences"], command=lambda: controller.show_frame("PreferencesPane"))
 
         #coloca os botoes no grid do frame
         newRecipeButton.grid(column=0, row=0, sticky='news')
@@ -642,7 +683,7 @@ class MainPage(Frame):
         scaleButton.grid(column=0, row=0, sticky='news')
         adjustTempButton.grid(column=0, row=0, sticky='news')
         measureTempButton.grid(column=1, row=0, sticky='news')
-        allButton.grid(row=0, column=0, sticky='news')
+        preferencesButton.grid(row=0, column=0, sticky='news')
  
     def ScaleButtonClick(self, button):
         if button.buttonToggle:
@@ -1756,7 +1797,7 @@ class PreferencesPane(Frame):
                      command=lambda: controller.show_frame("MainPage"))
         okButton.grid(row=0, column=0, sticky='news')
         applyButton = Button(buttonsFrame, text="Apply", width=1, \
-                     command=lambda: controller.show_frame("MainPage"))
+                     command=lambda: self.save_prefs())
         applyButton.grid(row=0, column=1, sticky='news')
         
         notebook = Notebook(noteFrame)
@@ -1878,10 +1919,10 @@ class PreferencesPane(Frame):
         self.tempDecimals.set(tempPrefs[self.controller.tempSubSections[1]])
         
         if tempPrefs[self.controller.tempSubSections[0]].lower() == "celsius":
-            self.isCelsius = True
+            self.isCelsius.set(True)
             self.celsiusRadio.select()
         else:
-            self.isCelsius = False
+            self.isCelsius.set(False)
             self.fahrRadio.select()
         
         ## Parses scale prefs
@@ -1889,34 +1930,81 @@ class PreferencesPane(Frame):
         self.scaleDecimals.set(scalePrefs[self.controller.scaleSubSections[1]])
         
         if scalePrefs[self.controller.scaleSubSections[2]].lower() == "metric":
-            self.isMetric = True
+            self.isMetric.set(True)
             self.metricRadio.select()
         else:
-            self.isMetric = False
+            self.isMetric.set(False)
             self.imperialRadio.select()
         
         ## Parses general prefs
-        self.languageBox.set(generalPrefs[self.controller.generalSubSections[0]])
+        self.languageBox.set(generalPrefs[self.controller.interfaceSubSections[0]])
+
+    def save_prefs(self, goBack=False):
+        newConfig = {}
+        
+        scalePrefs = self.controller.sections[0]
+        tempPrefs = self.controller.sections[1]
+        interfacePrefs = self.controller.sections[2]
+        
+        newConfig.update({
+                          scalePrefs: {},
+                          tempPrefs: {},
+                          generalPrefs: {}
+                         })
+        
+        ## Gets temperature prefs
+        if self.isCelsius.get():
+            tempUnit = "celsius"
+        else:
+            tempUnit = "fahrenheit"
+            
+        newConfig[tempPrefs].update({
+                                        self.controller.tempSubSections[1]: self.tempDecimals.get(),
+                                        self.controller.tempSubSections[0]: tempUnit
+                                    })
+
+        ## Gets scale prefs
+        
+        if self.isMetric.get():
+            scaleUnit = "metric"
+        else:
+            scaleUnit = "imperial"
+            
+        newConfig[scalePrefs].update({
+                                        self.controller.scaleSubSections[0]: self.referenceUnit.get(),
+                                        self.controller.scaleSubSections[1]: self.scaleDecimals.get(),
+                                        self.controller.scaleSubSections[2]: scaleUnit
+                                     })
+        
+        ## Parses general prefs
+        newConfig[generalPrefs].update({self.controller.interfaceSubSections[0]: self.languageBox.get()})
+        
+        print(newConfig)
+        
+        if goBack:
+            pass
 
 if __name__ == "__main__":
     app = PyLabApp()
     
     app.protocol("WM_DELETE_WINDOW", app.on_closing)
     
-    if os.path.isfile(configFile):
+    if os.path.isfile(app.configFile):
         app.read_config()
+        
+    app.parse_language()
     
     app.setup_app() 
     
     app.check_files()
     app.build_app()
     
-    if os.path.isfile(agitationFile):
+    if os.path.isfile(app.agitationFile):
         data = app.read_json("agitation")
         if data:
             app.dataController.import_data(data, "agitation")
             
-    if os.path.isfile(recipesFile):
+    if os.path.isfile(app.recipesFile):
         data = app.read_json("recipe")
         if data:
             app.dataController.import_data(data, "recipe")
