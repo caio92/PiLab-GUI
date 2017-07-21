@@ -339,21 +339,24 @@ class PyLabApp (Tk):
         self.pController = peripherals.PeripheralsController()
         
         self.sections = ["Scale", "Temperature", "Language"]
-        self.tempSubSections = ["TemperatureUnit"]
-        self.langSubSections = ["Language"]
-        self.scaleSubSections = ["ReferenceUnit"]
+        self.tempSubSections = ["TemperatureUnit", "DecimalPlaces"]
+        self.generalSubSections = ["Language"]
+        self.scaleSubSections = ["ReferenceUnit", "DecimalPlaces", "WeightUnit"]
         
         self.tanks = []
         
         self.config = {
                         self.sections[0]: {
-                                        self.scaleSubSections[0]: ""
+                                        self.scaleSubSections[0]: "",
+                                        self.scaleSubSections[1]: "1",
+                                        self.scaleSubSections[2]: "metric"                                        
                                      },
                         self.sections[1]: { 
-                                        self.tempSubSections[0]: "Celsius"
+                                        self.tempSubSections[0]: "celsius",
+                                        self.tempSubSections[1]: "2"
                                      },
                         self.sections[2]: {
-                                        self.langSubSections[0]: "en-US"
+                                        self.generalSubSections[0]: "en-US"
                                      }
                       } 
                 
@@ -465,8 +468,6 @@ class PyLabApp (Tk):
     def read_config(self):
         config = configparser.ConfigParser()
         config.read(configFile)
-        
-        #sections = config.sections()
         
         try: 
             self.config[self.sections[0]][self.scaleSubSections[0]] = \
@@ -1796,17 +1797,19 @@ class PreferencesPane(Frame):
                 
         self.isCelsius = BooleanVar()
         
-        celsiusRadio = Radiobutton(tempUnitLabelFrame, text="Celsius\n[°C]", width=8, variable=self.isCelsius, value=True, padx=3, pady=3, indicatoron=0)
-        fahrRadio = Radiobutton(tempUnitLabelFrame, text="Fahrenheit\n[°F]", width=8, variable=self.isCelsius, value=False, padx=3, pady=3, indicatoron=0)
+        self.celsiusRadio = Radiobutton(tempUnitLabelFrame, text="Celsius\n[°C]", width=8, variable=self.isCelsius, value=True, padx=3, pady=3, indicatoron=0)
+        self.fahrRadio = Radiobutton(tempUnitLabelFrame, text="Fahrenheit\n[°F]", width=8, variable=self.isCelsius, value=False, padx=3, pady=3, indicatoron=0)
         
-        celsiusRadio.grid(column=0, row=0, sticky="news")
-        fahrRadio.grid(column=1, row=0, sticky="news")
+        self.celsiusRadio.grid(column=0, row=0, sticky="news")
+        self.fahrRadio.grid(column=1, row=0, sticky="news")
+        
+        self.tempDecimals = StringVar()
         
         tempPlacesLabelFrame = Labelframe(tempFrame, text="Decimal Places", borderwidth=2, relief="groove", width=(rowWidth-6)/2, height=(rowHeight[0]-3)/2)
         tempPlacesLabelFrame.grid(column=1, row=0, sticky="news", padx=(1,2), pady=(2,1))
 
-        self.tempDecimals = Entry(tempPlacesLabelFrame, font=entryFont, width=8)
-        self.tempDecimals.grid(column=0, row=0, sticky="news")
+        tempDecimalsEntry = Entry(tempPlacesLabelFrame, font=entryFont, width=8, textvar=self.tempDecimals, justify="right")
+        tempDecimalsEntry.grid(column=0, row=0, sticky="news")
         
         tempPlacesLabelFrame.grid_propagate(False)
         tempUnitLabelFrame.grid_propagate(False)
@@ -1816,22 +1819,37 @@ class PreferencesPane(Frame):
         scaleUnitLabelFrame = Labelframe(scaleFrame, text="Scale Unit", borderwidth=2, relief="groove", width=(rowWidth)/2, height=(rowHeight[0]-3)/2)
         scaleUnitLabelFrame.grid(column=0, row=0, sticky="news", padx=(2,1), pady=(2,1))
                 
-        self.isKg = BooleanVar()
+        self.isMetric = BooleanVar()
         
-        kgRadio = Radiobutton(scaleUnitLabelFrame, text="Grams\n[g]", width=8, variable=self.isKg, value=True, padx=3, pady=3, indicatoron=0)
-        ounceRadio = Radiobutton(scaleUnitLabelFrame, text="Ounces\n[oz]", width=8, variable=self.isKg, value=False, padx=3, pady=3, indicatoron=0)
+        self.metricRadio = Radiobutton(scaleUnitLabelFrame, text="Grams\n[g]", width=8, variable=self.isMetric, value=True, padx=3, pady=3, indicatoron=0)
+        self.imperialRadio = Radiobutton(scaleUnitLabelFrame, text="Ounces\n[oz]", width=8, variable=self.isMetric, value=False, padx=3, pady=3, indicatoron=0)
         
-        kgRadio.grid(column=0, row=0, sticky="news")
-        ounceRadio.grid(column=1, row=0, sticky="news")
+        self.metricRadio.grid(column=0, row=0, sticky="news")
+        self.imperialRadio.grid(column=1, row=0, sticky="news")
         
         scalePlacesLabelFrame = Labelframe(scaleFrame, text="Decimal Places", borderwidth=2, relief="groove", width=(rowWidth-6)/2, height=(rowHeight[0]-3)/2)
         scalePlacesLabelFrame.grid(column=1, row=0, sticky="news", padx=(1,2), pady=(2,1))
 
-        self.scaleDecimals = Entry(scalePlacesLabelFrame, font=entryFont, width=8)
-        self.scaleDecimals.grid(column=0, row=0, sticky="news")
+        self.scaleDecimals = StringVar()
+
+        scaleDecimalsEntry = Entry(scalePlacesLabelFrame, font=entryFont, width=8, textvar=self.scaleDecimals, justify="right")
+        scaleDecimalsEntry.grid(column=0, row=0, sticky="news")
+        
+        scaleReferenceLabelFrame = Labelframe(scaleFrame, text="Scale Reference", borderwidth=2, relief="groove", width=(rowWidth-4), height=(rowHeight[0]-3)/2)
+        scaleReferenceLabelFrame.grid(column=0, row=1, sticky="news", columnspan=2, padx=2, pady=(1,2))
+        
+        self.referenceUnit = StringVar()
+        
+        scaleReferenceEntry = Entry(scaleReferenceLabelFrame, font=entryFont, width=10, textvar=self.referenceUnit, justify="right")
+        scaleReferenceEntry.grid(column=0, row=0, sticky="news")
+        
+        calibrateScaleButton = Button(scaleReferenceLabelFrame, text="Calibrate Scale")#, \
+                     #command=lambda: controller.show_frame("MainPage"))
+        calibrateScaleButton.grid(row=0, column=1, sticky='news')
         
         scalePlacesLabelFrame.grid_propagate(False)
         scaleUnitLabelFrame.grid_propagate(False)
+        scaleReferenceLabelFrame.grid_propagate(False)
         
         ## General Section ##
         
@@ -1846,8 +1864,40 @@ class PreferencesPane(Frame):
         
         self.languageBox = Combobox(languageLabelFrame, values=availableLanguages, width=16)
         self.languageBox.grid(column=0, row=0, sticky="news", padx=5)
+
+        ## Finally, loads the preferences ##
+        self.load_prefs()
+
+    def load_prefs(self):
         
-            
+        scalePrefs = self.controller.config[self.controller.sections[0]]
+        tempPrefs = self.controller.config[self.controller.sections[1]]
+        generalPrefs = self.controller.config[self.controller.sections[2]]
+        
+        ## Parses temperature prefs
+        self.tempDecimals.set(tempPrefs[self.controller.tempSubSections[1]])
+        
+        if tempPrefs[self.controller.tempSubSections[0]].lower() == "celsius":
+            self.isCelsius = True
+            self.celsiusRadio.select()
+        else:
+            self.isCelsius = False
+            self.fahrRadio.select()
+        
+        ## Parses scale prefs
+        self.referenceUnit.set(scalePrefs[self.controller.scaleSubSections[0]])
+        self.scaleDecimals.set(scalePrefs[self.controller.scaleSubSections[1]])
+        
+        if scalePrefs[self.controller.scaleSubSections[2]].lower() == "metric":
+            self.isMetric = True
+            self.metricRadio.select()
+        else:
+            self.isMetric = False
+            self.imperialRadio.select()
+        
+        ## Parses general prefs
+        self.languageBox.set(generalPrefs[self.controller.generalSubSections[0]])
+
 if __name__ == "__main__":
     app = PyLabApp()
     
