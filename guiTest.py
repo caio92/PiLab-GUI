@@ -13,10 +13,12 @@ import pdb
 
 class DataController:
     def __init__(self):
+        valuesText = app.interfaceText["RunRecipe"]["Values"]
+        
         self.agitations = {}
         self.recipes = {}
-        self.categories = ["All"]
-        self.films = ["All"]
+        self.categories = [valuesText["AllCategories"]]
+        self.films = [valuesText["AllFilms"]]
         self.agitationWidgets = {}
         self.recipesWidgets = {}
         
@@ -324,9 +326,10 @@ class PyLabApp (Tk):
     def __init__(self, *args, **kwargs):
         Tk.__init__(self, *args, **kwargs)
         
-        self.dataController = DataController()
-        self.pController = peripherals.PeripheralsController()
+        self.pController = peripherals.PeripheralsController(self)
         
+        self.languages = []
+                
         self.defaultConfigDir = "./ConfigFiles/"
 
         self.recipesFile = self.defaultConfigDir + "recipes.conf"
@@ -446,9 +449,11 @@ class PyLabApp (Tk):
 
         return _list
     
-    def build_app(self):        
+    def build_app(self): 
+        self.dataController = DataController()
+               
         self.frames = {}
-        for F in (MainPage, GetTemperatures, SetTemperature, RunRecipe, Agitation, NewAgitationCheck, RecipesWindow, PreferencesPane):
+        for F in (MainPage, GetTemperatures, SetTemperature, RunRecipe, AgitationsWindow, NewAgitationCheck, RecipesWindow, PreferencesPane):
             page_name = F.__name__
             frame = F(parent=self.container, controller=self)
             self.frames[page_name] = frame
@@ -506,6 +511,9 @@ class PyLabApp (Tk):
         if os.path.isfile(app.languagesFile):
             
             languages = self.read_json("language")
+            
+            self.languages = list(languages.keys())
+            
             language = self.config["Interface"]["Language"] or "en-US"
             
             if language in languages:
@@ -519,12 +527,14 @@ class GUIButton:
     def __init__(self, buttonType, master, **kwargs):
         #self.button = tkButton
         
-        buttonsText = app.interfaceText["MainPage"]["Buttons"]
+        scaleButtonsText = app.interfaceText["MainPage"]["Buttons"]
+        tempButtonsText = app.interfaceText["GetTemperatures"]["Buttons"]
         
-        self.scaleText = [buttonsText["ScaleButtonOn"], buttonsText["ScaleButtonOff"]]
+        self.scaleText = [scaleButtonsText["ScaleButtonOn"], scaleButtonsText["ScaleButtonOff"]]
         #self.scaleText = ["Ligar\nBalança", "Desligar\nBalança"]
         #self.scaleReadingText = "\n\n Leitura atual:\n"
-        self.onOffText = ["Turn\nOn", "Turn\nOff"]
+        #self.onOffText = ["Turn\nOn", "Turn\nOff"]
+        self.onOffText = [tempButtonsText["TempButtonOn"], tempButtonsText["TempButtonOff"]]
         self.runText = ["Run", "Running"]
 
         if "textvariable" not in kwargs:
@@ -688,7 +698,7 @@ class MainPage(Frame):
     def ScaleButtonClick(self, button):
         if button.buttonToggle:
             #turn on scale reading
-            button.ToggleText("Setting up scale...") 
+            button.ToggleText(app.interfaceText["MainPage"]["Buttons"]["SettingUpScale"]) 
             app.pController.activate_scale()
                        
         else:
@@ -778,8 +788,11 @@ class GetTemperatures(Frame):
         tempLabel1.grid(row=0, column=1, columnspan=6, sticky='news')
         tempLabel2.grid(row=0, column=1, columnspan=6, sticky='news')
         tempLabel3.grid(row=0, column=1, columnspan=6, sticky='news')
+        
+        labelsText = app.interfaceText["GetTemperatures"]["Labels"]
+        buttonsText = app.interfaceText["GetTemperatures"]["Buttons"]
 
-        unitsLabel = Label(unitsFrame, text="Temp.\nUnit:")
+        unitsLabel = Label(unitsFrame, text=labelsText["TempUnit"])
         unitsLabel.grid(row=0,column=0, sticky="news")
 
         celsiusRadio = Radiobutton(unitsFrame, text="Celsius\n[°C]", width=6, variable=self.isCelsius, value=True, padx=3, pady=3, indicatoron=0, command=lambda:self.change_temp_unit())
@@ -790,7 +803,7 @@ class GetTemperatures(Frame):
 
         celsiusRadio.select()
 
-        backButton = Button(bottomFrame, text="Voltar", width=6, command=lambda: controller.show_frame("MainPage"))
+        backButton = Button(bottomFrame, text=buttonsText["Back"], width=6, command=lambda: controller.show_frame("MainPage"))
         backButton.grid(row=0, column=1, sticky='news')
 
     def start_reading(self, guiButton):
@@ -1079,13 +1092,17 @@ class RunRecipe(Frame):
         
         listFont = font.Font(size=10)
         
-        filterLabel = Label(filterParentFrame, text="Filter by:", font=titleFont)
+        labelsText = app.interfaceText["RunRecipe"]["Labels"]
+        buttonsText = app.interfaceText["RunRecipe"]["Buttons"]
+        self.valuesText = app.interfaceText["RunRecipe"]["Values"]
+        
+        filterLabel = Label(filterParentFrame, text=labelsText["FilterBy"], font=titleFont)
         filterLabel.grid(row=0, column=0)
         
-        catLabel = Label(catFrame, text="Category:", font=titleFont)
-        filmLabel = Label(filmFrame, text="Film:", font=titleFont)
-        recipeLabel = Label(recipeFrame, text="Recipe to Run:", font=titleFont)
-        sortLabel = Label(sortFrame, text="Sort Recipes:", font=titleFont)
+        catLabel = Label(catFrame, text=labelsText["Category"], font=titleFont)
+        filmLabel = Label(filmFrame, text=labelsText["Film"], font=titleFont)
+        recipeLabel = Label(recipeFrame, text=labelsText["Recipe"], font=titleFont)
+        sortLabel = Label(sortFrame, text=labelsText["Sort"], font=titleFont)
         
         catLabel.grid(row=0, column=0, sticky="news")
         filmLabel.grid(row=0, column=0, sticky="news")
@@ -1097,8 +1114,8 @@ class RunRecipe(Frame):
         self.filmList = Combobox(filmFrame, height=7, font=listFont)
         self.catList = Combobox(catFrame, height=4, font=listFont)
         
-        self.filmList.set("All")
-        self.catList.set("All")
+        self.filmList.set(self.valuesText["AllFilms"])
+        self.catList.set(self.valuesText["AllCategories"])
         
         controller.dataController.add_widget(self.filmList, "recipe", "filmList")
         controller.dataController.add_widget(self.catList, "recipe", "catList")
@@ -1111,27 +1128,27 @@ class RunRecipe(Frame):
         self.recipeList.grid(row=1, column=0, sticky="nsew")
         self.filmList.grid(row=1, column=0, sticky="nsew")
         
-        backButton = Button(rowFrame3, text="Voltar", width=1, \
+        backButton = Button(rowFrame3, text=buttonsText["Back"], width=1, \
                      command=lambda: self.controller.show_frame("MainPage"))
         backButton.grid(row=0, column=2, sticky='news')
-        runButton = Button(rowFrame3, text="Run Recipe", width=1)
+        runButton = Button(rowFrame3, text=buttonsText["Run"], width=1)
         runButton.grid(row=0, column=0, sticky='news')
-        clearButton = Button(rowFrame3, text="Clear All", width=1, \
+        clearButton = Button(rowFrame3, text=buttonsText["Clear"], width=1, \
                       command=lambda: self.clear_all())
         clearButton.grid(row=0, column=1, sticky='news')
         
-        azButton = Button(sortButtonsFrame, text="A to Z", width=1, \
+        azButton = Button(sortButtonsFrame, text=buttonsText["SortAZ"], width=1, \
                    command=lambda: self.sort_recipes())
         azButton.grid(row=0, column=0, sticky='nsew')
-        zaButton = Button(sortButtonsFrame, text="Z to A", width=1, \
+        zaButton = Button(sortButtonsFrame, text=buttonsText["SortZA"], width=1, \
                    command=lambda: self.sort_recipes(reverse=True))
         zaButton.grid(row=0, column=1, sticky='nsew')
 
     def filter_recipes(self, event):
         fValue = event.widget.get()
         filteredRecipes = []
-        cats = ["All"]
-        films = ["All"]
+        cats = [self.valuesText["AllCategories"]]
+        films = [self.valuesText["AllFilms"]]
         changed = False
         
         self.recipeList.set("")
@@ -1151,14 +1168,16 @@ class RunRecipe(Frame):
                 self.activeFilters.update({"film": fValue})
                 
         if changed:
-            if self.activeFilters["category"] == "All" and  self.activeFilters["film"] == "All":
+            if self.activeFilters["category"] == self.valuesText["AllCategories"] and  self.activeFilters["film"] == self.valuesText["AllFilms"]:
                 filteredRecipes = list(self.controller.dataController.recipes.keys())
                 self.catList.config(value=self.controller.dataController.categories)
                 self.filmList.config(value=self.controller.dataController.films)
                 
             elif changed:
                 for key, value in self.activeFilters.items():
-                    if value != "All":
+                    #if (key == "category" and value != self.valuesText["AllCategories"]) \
+                    #        or (key == "film" and value != self.valuesText["AllFilms"]):
+                    if value != self.valuesText["AllCategories"] or value != self.valuesText["AllFilms"]:
                         filteredRecipes = self.controller.dataController.filter_data("recipes", key, value, filteredRecipes)
                     
                     if key == "category" and isCat:
@@ -1174,7 +1193,8 @@ class RunRecipe(Frame):
                     else:
                         continue
                         
-                    if value == "All":
+                    #if value == "All":
+                    if value == self.valuesText["AllCategories"] or value == self.valuesText["AllFilms"]:
                         lookupList = list(self.controller.dataController.recipes.keys())
                     else:
                         lookupList = filteredRecipes
@@ -1197,8 +1217,8 @@ class RunRecipe(Frame):
         self.catList.config(value=self.controller.dataController.categories)
         
         self.activeFilters = {
-                                "category": "All",
-                                "film": "All"
+                                "category": self.valuesText["AllCategories"],
+                                "film": self.valuesText["AllFilms"]
                              }
                              
         self.filmList.current(0)
@@ -1224,7 +1244,7 @@ class RunRecipe(Frame):
         if carryData in self.controller.dataController.recipes:
             self.recipeList.set(carryData)
             
-class Agitation(Frame):
+class AgitationsWindow(Frame):
     def __init__(self, parent, controller):
         
         Frame.__init__(self, parent)
@@ -1311,10 +1331,13 @@ class Agitation(Frame):
         repetitionsEntry.grid(row=1, column=0, sticky="news")
         totalTimeEntry.grid(row=1, column=1, sticky="news")
         
-        durationLabel = Label(rowFrame1, text="Duration [s]", font=titleFont)
-        intervalLabel = Label(rowFrame1, text="Interval [s]", font=titleFont)
-        repetitionsLabel = Label(rowFrame2, text="Repetitions", font=titleFont)
-        totalTimeLabel = Label(rowFrame2, text="Total Time [s]", font=titleFont)
+        labelsText = app.interfaceText["AgitationsWindow"]["Labels"]
+        buttonsText = app.interfaceText["AgitationsWindow"]["Buttons"]
+        
+        durationLabel = Label(rowFrame1, text=labelsText["Duration"], font=titleFont)
+        intervalLabel = Label(rowFrame1, text=labelsText["Interval"], font=titleFont)
+        repetitionsLabel = Label(rowFrame2, text=labelsText["Repetitions"], font=titleFont)
+        totalTimeLabel = Label(rowFrame2, text=labelsText["TotalTime"], font=titleFont)
         
         durationLabel.grid(row=0, column=0, sticky="news")
         intervalLabel.grid(row=0, column=1, sticky="news")
@@ -1323,27 +1346,27 @@ class Agitation(Frame):
         
         buttonsFrame.grid(column=1, row=0, sticky="news")
         
-        backButton = Button(buttonsFrame, text="Voltar", height=1, \
-                     command=lambda: controller.show_frame("NewAgitationCheck"))
+        backButton = Button(buttonsFrame, text=buttonsText["Back"], height=1, \
+                     width=1, command=lambda: controller.show_frame("NewAgitationCheck"))
         backButton.grid(row=2, column=1, sticky='news')
-        saveButton = Button(buttonsFrame, text="Save", height=1, \
-                     command=lambda: self.save_data())
+        saveButton = Button(buttonsFrame, text=buttonsText["Save"], height=1, \
+                     width=1, command=lambda: self.save_data())
         saveButton.grid(row=1, column=1, sticky='news')
-        self.continueButton = Button(buttonsFrame, text="Continue", \
+        self.continueButton = Button(buttonsFrame, text=buttonsText["Continue"], \
                      height=1, command=lambda: self.change_page())
         self.continueButton.grid(row=0, column=0, columnspan=2, sticky='news')
-        self.deleteButton = Button(buttonsFrame, text="Delete", height=1, \
-                       command=lambda: self.confirm_delete(), state="disabled")
+        self.deleteButton = Button(buttonsFrame, text=buttonsText["Delete"], height=1, \
+                       width=1, command=lambda: self.confirm_delete(), state="disabled")
         self.deleteButton.grid(row=2, column=0, sticky='news')
-        self.clearButton = Button(buttonsFrame, text="Clear", height=1, \
-                       command=lambda: self.clear_data())
+        self.clearButton = Button(buttonsFrame, text=buttonsText["Clear"], height=1, \
+                       width=1, command=lambda: self.clear_data())
         self.clearButton.grid(row=1, column=0, sticky='news')
         
         patternsFrame.grid(row=0, column=0, sticky="news")
         nameFrame.grid(row=0, column=0, sticky="news")
         pBoxFrame.grid(row=1, column=0, sticky="news")
         
-        nameLabel = Label(nameFrame, text="Agitation Name", font=titleFont)
+        nameLabel = Label(nameFrame, text=labelsText["Name"], font=titleFont)
         nameEntry = Entry(nameFrame, textvar = self.name)
         
         #controller.dataController.add_widget(nameEntry, "agitation")
@@ -1484,15 +1507,17 @@ class NewAgitationCheck(Frame):
 
         rowFrame1.grid_propagate(False)
         
+        buttonsText = app.interfaceText["NewAgitationCheck"]["Buttons"]
+        
         rowFrame1.grid(column=0, row=0, sticky="news", pady=(7.5, 7.5), padx=7.5)
         
-        backButton = Button(rowFrame1, text="Voltar", height=1, \
+        backButton = Button(rowFrame1, text=buttonsText["Back"], height=1, \
                      command=lambda: self.controller.show_frame("MainPage"))
         backButton.grid(row=2, column=0, sticky='news')
-        agitationButton = Button(rowFrame1, text="Create or Edit Agitation Patterns", height=1, \
-                     command=lambda: controller.show_frame("Agitation"))
+        agitationButton = Button(rowFrame1, text=buttonsText["Agitations"], height=1, \
+                     command=lambda: controller.show_frame("AgitationsWindow"))
         agitationButton.grid(row=0, column=0, sticky='news')
-        recipeButton = Button(rowFrame1, text="Create or Edit Recipes", height=1, \
+        recipeButton = Button(rowFrame1, text=buttonsText["Recipes"], height=1, \
                      command=lambda: controller.show_frame("RecipesWindow"))
         recipeButton.grid(row=1, column=0, sticky='news')
 
@@ -1588,12 +1613,15 @@ class RecipesWindow(Frame):
         controller.dataController.add_widget(catEntry, "recipe", "categoryBox")
         controller.dataController.add_widget(filmEntry, "recipe", "filmBox")
         controller.dataController.add_widget(self.nameEntry, "recipe", "nameBox")
+        
+        labelsText = app.interfaceText["RecipesWindow"]["Labels"]
+        buttonsText = app.interfaceText["RecipesWindow"]["Buttons"]
                 
-        durationLabel = Label(rowFrame1, text="Duration [m]", font=titleFont)
-        tempLabel = Label(rowFrame1, text="Temperature [C]", font=titleFont)
-        catLabel = Label(rowFrame2, text="Category", font=titleFont)
-        filmLabel = Label(rowFrame2, text="Film", font=titleFont)
-        nameLabel = Label(rowFrame2, text="Name", font=titleFont)
+        durationLabel = Label(rowFrame1, text=labelsText["Duration"], font=titleFont)
+        tempLabel = Label(rowFrame1, text=labelsText["Temperature"], font=titleFont)
+        catLabel = Label(rowFrame2, text=labelsText["Category"], font=titleFont)
+        filmLabel = Label(rowFrame2, text=labelsText["Film"], font=titleFont)
+        nameLabel = Label(rowFrame2, text=labelsText["Name"], font=titleFont)
         
         durationLabel.grid(row=0, column=0, sticky="news")
         tempLabel.grid(row=0, column=1, sticky="news")
@@ -1603,27 +1631,27 @@ class RecipesWindow(Frame):
         
         buttonsFrame.grid(column=1, row=0, sticky="news")
         
-        backButton = Button(buttonsFrame, text="Voltar", height=1, \
-                     command=lambda: controller.show_frame("NewAgitationCheck"))
+        backButton = Button(buttonsFrame, text=buttonsText["Back"], height=1, \
+                     width=1, command=lambda: controller.show_frame("NewAgitationCheck"))
         backButton.grid(row=2, column=1, sticky='news')
-        saveButton = Button(buttonsFrame, text="Save", height=1, \
-                     command=lambda: self.save_data())
+        saveButton = Button(buttonsFrame, text=buttonsText["Save"], height=1, \
+                     width=1, command=lambda: self.save_data())
         saveButton.grid(row=1, column=1, sticky='news')
-        self.continueButton = Button(buttonsFrame, text="Continue", height=1, \
+        self.continueButton = Button(buttonsFrame, text=buttonsText["Continue"], height=1, \
                               command=lambda: self.change_page(), state="normal")
         self.continueButton.grid(row=0, column=0, columnspan=2, sticky='news')
-        self.deleteButton = Button(buttonsFrame, text="Delete", height=1, \
-                       command=lambda: self.delete_entry(), state="disabled")
+        self.deleteButton = Button(buttonsFrame, text=buttonsText["Delete"], height=1, \
+                       width=1, command=lambda: self.delete_entry(), state="disabled")
         self.deleteButton.grid(row=2, column=0, sticky='news')
-        self.clearButton = Button(buttonsFrame, text="Clear", height=1, \
-                       command=lambda: self.delete_entry())
+        self.clearButton = Button(buttonsFrame, text=buttonsText["Clear"], height=1, \
+                       width=1, command=lambda: self.delete_entry())
         self.clearButton.grid(row=1, column=0, sticky='news')
         
         patternsFrame.grid(row=0, column=0, sticky="news", padx=(0,3))
         agitationFrame.grid(row=0, column=0, sticky="news")
         pBoxFrame.grid(row=1, column=0, sticky="news")
         
-        agitationLabel = Label(agitationFrame, text="Agitations", font=titleFont)
+        agitationLabel = Label(agitationFrame, text=labelsText["Agitations"], font=titleFont)
         agitationLabel.grid(row=0, column=0, sticky="news")#, padx=(0,3))
         
         self.agitationEntry = Combobox(agitationFrame, \
@@ -1825,15 +1853,18 @@ class PreferencesPane(Frame):
         interfaceFrame.grid_columnconfigure(0, weight=1)
         interfaceFrame.grid_columnconfigure(1, weight=1)
         
-        notebook.add(tempFrame, text="Temperature", sticky="news")
-        notebook.add(scaleFrame, text="Weight Scale", sticky="news")
-        notebook.add(interfaceFrame, text="Interface", sticky="news")
+        labelsText = app.interfaceText["PreferencesPane"]["Labels"]
+        buttonsText = app.interfaceText["PreferencesPane"]["Buttons"]
+        
+        notebook.add(tempFrame, text=labelsText["TempFrame"], sticky="news")
+        notebook.add(scaleFrame, text=labelsText["ScaleFrame"], sticky="news")
+        notebook.add(interfaceFrame, text=labelsText["InterFrame"], sticky="news")
         
         notebook.grid(column=0, row=0, sticky="news")
         
         ## Temperature Unity Section ##
         
-        tempUnitLabelFrame = Labelframe(tempFrame, text="Temperature Unit", borderwidth=2, relief="groove", width=(rowWidth)/2, height=(rowHeight[0]-3)/2)
+        tempUnitLabelFrame = Labelframe(tempFrame, text=labelsText["TempUnit"], borderwidth=2, relief="groove", width=(rowWidth)/2, height=(rowHeight[0]-3)/2)
         tempUnitLabelFrame.grid(column=0, row=0, sticky="news", padx=(2,1), pady=(2,1))
                 
         self.isCelsius = BooleanVar()
@@ -1846,7 +1877,7 @@ class PreferencesPane(Frame):
         
         self.tempDecimals = StringVar()
         
-        tempPlacesLabelFrame = Labelframe(tempFrame, text="Decimal Places", borderwidth=2, relief="groove", width=(rowWidth-6)/2, height=(rowHeight[0]-3)/2)
+        tempPlacesLabelFrame = Labelframe(tempFrame, text=labelsText["TempDecimals"], borderwidth=2, relief="groove", width=(rowWidth-6)/2, height=(rowHeight[0]-3)/2)
         tempPlacesLabelFrame.grid(column=1, row=0, sticky="news", padx=(1,2), pady=(2,1))
 
         tempDecimalsEntry = Entry(tempPlacesLabelFrame, font=entryFont, width=8, textvar=self.tempDecimals, justify="right")
@@ -1857,18 +1888,18 @@ class PreferencesPane(Frame):
         
         ## Weigh Scale Section ##
         
-        scaleUnitLabelFrame = Labelframe(scaleFrame, text="Scale Unit", borderwidth=2, relief="groove", width=(rowWidth)/2, height=(rowHeight[0]-3)/2)
+        scaleUnitLabelFrame = Labelframe(scaleFrame, text=labelsText["ScaleUnit"], borderwidth=2, relief="groove", width=(rowWidth)/2, height=(rowHeight[0]-3)/2)
         scaleUnitLabelFrame.grid(column=0, row=0, sticky="news", padx=(2,1), pady=(2,1))
                 
         self.isMetric = BooleanVar()
         
-        self.metricRadio = Radiobutton(scaleUnitLabelFrame, text="Grams\n[g]", width=8, variable=self.isMetric, value=True, padx=3, pady=3, indicatoron=0)
-        self.imperialRadio = Radiobutton(scaleUnitLabelFrame, text="Ounces\n[oz]", width=8, variable=self.isMetric, value=False, padx=3, pady=3, indicatoron=0)
+        self.metricRadio = Radiobutton(scaleUnitLabelFrame, text=buttonsText["Metric"], width=8, variable=self.isMetric, value=True, padx=3, pady=3, indicatoron=0)
+        self.imperialRadio = Radiobutton(scaleUnitLabelFrame, text=buttonsText["Imperial"], width=8, variable=self.isMetric, value=False, padx=3, pady=3, indicatoron=0)
         
         self.metricRadio.grid(column=0, row=0, sticky="news")
         self.imperialRadio.grid(column=1, row=0, sticky="news")
         
-        scalePlacesLabelFrame = Labelframe(scaleFrame, text="Decimal Places", borderwidth=2, relief="groove", width=(rowWidth-6)/2, height=(rowHeight[0]-3)/2)
+        scalePlacesLabelFrame = Labelframe(scaleFrame, text=labelsText["ScaleDecimals"], borderwidth=2, relief="groove", width=(rowWidth-6)/2, height=(rowHeight[0]-3)/2)
         scalePlacesLabelFrame.grid(column=1, row=0, sticky="news", padx=(1,2), pady=(2,1))
 
         self.scaleDecimals = StringVar()
@@ -1876,7 +1907,7 @@ class PreferencesPane(Frame):
         scaleDecimalsEntry = Entry(scalePlacesLabelFrame, font=entryFont, width=8, textvar=self.scaleDecimals, justify="right")
         scaleDecimalsEntry.grid(column=0, row=0, sticky="news")
         
-        scaleReferenceLabelFrame = Labelframe(scaleFrame, text="Scale Reference", borderwidth=2, relief="groove", width=(rowWidth-4), height=(rowHeight[0]-3)/2)
+        scaleReferenceLabelFrame = Labelframe(scaleFrame, text=labelsText["ScaleReference"], borderwidth=2, relief="groove", width=(rowWidth-4), height=(rowHeight[0]-3)/2)
         scaleReferenceLabelFrame.grid(column=0, row=1, sticky="news", columnspan=2, padx=2, pady=(1,2))
         
         self.referenceUnit = StringVar()
@@ -1884,7 +1915,7 @@ class PreferencesPane(Frame):
         scaleReferenceEntry = Entry(scaleReferenceLabelFrame, font=entryFont, width=10, textvar=self.referenceUnit, justify="right")
         scaleReferenceEntry.grid(column=0, row=0, sticky="news")
         
-        calibrateScaleButton = Button(scaleReferenceLabelFrame, text="Calibrate Scale")#, \
+        calibrateScaleButton = Button(scaleReferenceLabelFrame, text=buttonsText["CalibrateScale"])#, \
                      #command=lambda: controller.show_frame("MainPage"))
         calibrateScaleButton.grid(row=0, column=1, sticky='news')
         
@@ -1894,16 +1925,14 @@ class PreferencesPane(Frame):
         
         ## General Section ##
         
-        languageLabelFrame = Labelframe(interfaceFrame, text="Interface Language", borderwidth=2, relief="groove", width=(rowWidth-4), height=(rowHeight[0])/2)
+        languageLabelFrame = Labelframe(interfaceFrame, text=labelsText["Language"], borderwidth=2, relief="groove", width=(rowWidth-4), height=(rowHeight[0])/2)
         languageLabelFrame.grid(column=0, row=0, sticky="news", padx=(2,1), pady=(2,1))
         languageLabelFrame.grid_propagate(False)
-        
-        availableLanguages = ["pt-BR",  "en-US"]
-        
+                
         languageLabelFrame.option_add("*TCombobox*Listbox*Font", entryFont)
         languageLabelFrame.option_add("*TCombobox*Font", entryFont)
         
-        self.languageBox = Combobox(languageLabelFrame, values=availableLanguages, width=16)
+        self.languageBox = Combobox(languageLabelFrame, values=app.languages, width=16)
         self.languageBox.grid(column=0, row=0, sticky="news", padx=5)
 
         ## Finally, loads the preferences ##

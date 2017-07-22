@@ -22,8 +22,10 @@ class Tank():
 
 class PeripheralsController():
     
-    def __init__(self):
+    def __init__(self, app):
         GPIO.setmode(GPIO.BOARD)
+        
+        self.app = app
         
         self.scaleInfo = []
         
@@ -83,7 +85,8 @@ class PeripheralsController():
             self.tanks[tankName].tankInfo.update(updatedTank.tankInfo)
             if tempUnit is not None:
                 if tankName in self.activeTanks:
-                    self.tanks[tankName].tankInfo["textVar"].set("Changing temperature unit...")
+                    text = self.app.interfaceText["GetTemperatures"]["Labels"]["ChangingUnit"]
+                    self.tanks[tankName].tankInfo["textVar"].set(text)
                     
                 self.tanks[tankName].tankInfo["updated"] = False
                 if tempUnit == W1ThermSensor.DEGREES_C:
@@ -141,8 +144,8 @@ class PeripheralsController():
         if tankName in self.tanks:
             if not self.registeredTanks:
                 self.RegisterTherms()
-                
-            self.tanks[tankName].tankInfo["textVar"].set("Reading temperature...")
+            text = self.app.interfaceText["GetTemperatures"]["Labels"]["ReadingTemp"]    
+            self.tanks[tankName].tankInfo["textVar"].set(text)
 
             if self.activeTanks:
                 self.activeTanks.append(tankName)
