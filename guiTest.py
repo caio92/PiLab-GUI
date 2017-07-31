@@ -1805,6 +1805,7 @@ class RecipesWindow(Frame):
             print("No item selected!")
         else:
             for item in self.selection:
+                self.update_duration(self.patternsBox.get(item), "minus")
                 self.patternsBox.delete(item)#self.patternsBox.get(0, "end").index(self.selection))
             
         #self.clear_data()
@@ -1848,6 +1849,23 @@ class RecipesWindow(Frame):
         chosenPattern = self.agitationEntry.get()
         self.agitationEntry.set("")
         self.patternsBox.insert(END, chosenPattern)
+        
+        self.update_duration(chosenPattern, "add")
+        
+    def update_duration(self, pattern, operation):
+        
+        duration = self.duration.get() or 0
+        totalTime = self.controller.dataController.agitations[pattern]["totalTime"] or 0
+        
+        if operation == "add":
+            duration = float(duration) + float(totalTime)
+        elif operation == "minus":
+            duration = float(duration) - float(totalTime)
+            
+        if duration != 0:
+            self.duration.set("%.2f" % duration)
+        else:
+            self.duration.set("")
 
     def agitation_select(self, event):
         listBox = event.widget
