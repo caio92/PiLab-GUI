@@ -1354,6 +1354,11 @@ class AgitationsWindow(Frame):
         repetitionsEntry.grid(row=1, column=0, sticky="news")
         totalTimeEntry.grid(row=1, column=1, sticky="news")
         
+        repetitionsEntry.bind("<KeyRelease>", lambda event: self.update_values(event, wType="repetitions"))
+        durationEntry.bind("<KeyRelease>", lambda event : self.update_values(event, wType="duration"))
+        intervalEntry.bind("<KeyRelease>", lambda event: self.update_values(event, wType="interval"))
+        totalTimeEntry.bind("<KeyRelease>", lambda event: self.update_values(event, wType="totalTime"))
+        
         labelsText = app.interfaceText["AgitationsWindow"]["Labels"]
         buttonsText = app.interfaceText["AgitationsWindow"]["Buttons"]
         
@@ -1510,6 +1515,61 @@ class AgitationsWindow(Frame):
             self.controller.show_frame("RecipesWindow", carryData)
         except:
             self.controller.show_frame("RecipesWindow")
+    
+    def update_values(self, event, wType):
+        if event.char.isnumeric() or event.char == '\x08':
+            widgetVal = event.widget.get()
+                    
+            if wType == "duration":
+                duration = widgetVal or 0
+                interval = self.interval.get() or 0
+                repetitions = self.repetitions.get() or 0
+                totalTime = self.totalTime.get() or 0
+            elif wType == "interval":
+                duration = self.duration.get() or 0
+                interval = widgetVal or 0
+                repetitions = self.repetitions.get() or 0
+                totalTime = self.totalTime.get() or 0
+            elif wType == "repetitions":
+                duration = self.duration.get() or 0
+                interval = self.interval.get() or 0
+                repetitions = widgetVal or 0
+                totalTime = self.totalTime.get() or 0
+            elif wType == "totalTime":
+                duration = self.duration.get() or 0
+                interval = self.interval.get() or 0
+                repetitions = self.repetitions.get() or 0
+                totalTime = widgetVal or 0
+                
+            data = [duration, interval, repetitions, totalTime]
+                
+            self.update_fields(data, wType)
+                          
+    def update_fields(self, data, wType):
+        if data[0] != 0 and data[1] != 0:
+            
+            if self.quick_validate(data):
+                if wType == "totalTime":            
+                    wValue = int(data[3]/(data[0]+data[1]))
+                    if wValue != 0:
+                        self.repetitions.set(str(wValue))
+                    else:
+                        self.repetitions.set("")
+                else:
+                    wValue = int(data[2])*(data[0]+data[1])
+                    if wValue != 0:
+                        self.totalTime.set("%.2f" % wValue)
+                    else:
+                        self.repetitions.set("")
+                    
+    def quick_validate(self, dataIn):
+        for i in range(0, len(dataIn)):
+            try:
+                dataIn[i] = float(dataIn[i])
+            except ValueError:
+                return False
+                
+        return True
             
 class NewAgitationCheck(Frame):
     def __init__(self, parent, controller):
