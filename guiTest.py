@@ -144,15 +144,17 @@ class DataController:
         
         #defaultText = ""
         #errorText = ""
+        
+        errorTexts = app.interfaceText["WarningWindow"]["Validation"]
          
-        defaultText = errorText = "".join(["Error at ", list(data.keys())[0], "\n"]) 
+        defaultText = errorText = "".join([errorTexts["DefaultError"], list(data.keys())[0], "\n"]) 
                 
         if dataType == "recipe":
-            updateText = ["You're about to replace recipe", "\nand it cannot be undone. Continue?"]
-            warningTitle = "Recipe error: "
+            updateText = errorTexts["RecipeUpdate"]#["You're about to replace recipe", "\nand it cannot be undone. Continue?"]
+            warningTitle = errorTexts["RecipeTitle"]#"Recipe error: "
         else:
-            updateText = ["You are replacing agitation pattern\n", "and it cannot be undone.\nContinue?"]
-            warningTitle = "Agitation error: "
+            updateText = errorTexts["AgitationUpdate"]#["You are replacing agitation pattern\n", "and it cannot be undone.\nContinue?"]
+            warningTitle = errorTexts["AgitationTitle"]#"Agitation error: "
          
         for item in data:
             
@@ -164,7 +166,7 @@ class DataController:
             checkedAgitations = []
             
             if item == "":
-                errorText = "".join([errorText, "Name cannot be blank.\n"])
+                errorText = "".join([errorText, errorTexts["BlankName"]])
             elif item in self.recipes and dataType == "recipe":
                 willUpdate = True
             elif item in self.agitations and dataType == "agitation":
@@ -173,41 +175,42 @@ class DataController:
             for info in data[item]:
                 if info == "duration":
                     if data[item][info] == "":
-                        errorText = "".join([errorText, "Duration cannot be blank.\n"])
+                        errorText = "".join([errorText, errorTexts["BlankDuration"]])
                     elif not self.check_float(data[item][info]):
                         if ',' in data[item][info]:
-                            errorText = "".join([errorText, "Duration: use . as decimal separator.\n"])
+                            errorText = "".join([errorText, errorTexts["DurationDecimal"]])
                         else:
-                            errorText = "".join([errorText, "Duration must be a numeric value.\n"])
+                            errorText = "".join([errorText, errorTexts["DurationNumeric"]])
                     elif float(data[item][info]) <= 0:
-                        errorText = "".join([errorText, "Duration must be greater than 0.\n"])
+                        errorText = "".join([errorText, errorTexts["DurationZero"]])
                     continue
                     
                 elif dataType == "recipe":
                     if info == "film":
                         if data[item][info] == "":
-                            data[item][info] = "all"
+                            data[item][info] = app.interfaceText["RunRecipes"]["Values"]["AllFilms"]
                         continue
                     elif info == "category":
                         if  data[item][info] == "":
-                            data[item][info] = "all"
+                            data[item][info] = app.interfaceText["RunRecipes"]["Values"]["AllFilms"]
                         continue
                     elif info == "temperature":
                         if not self.check_float(data[item][info]):
                             if ',' in data[item][info]:
-                                errorText = "".join([errorText, "Temperature: use . as decimal separator.\n"])
+                                errorText = "".join([errorText, errorTexts["TemperatureDecimal"]])
                             else:
                                 if data[item][info] != "":
-                                    errorText = "".join([errorText, "Temperature must be a numeric value.\n"])
+                                    errorText = "".join([errorText, errorTexts["TemperatureNumeric"]])
                         elif float(data[item][info]) <= 0:
-                            errorText = "".join([errorText, "Temperature must be greater than 0.\n"])
+                            errorText = "".join([errorText, errorTexts["TemperatureZero"]])
                         continue
+                        
                     if info == "agitations":
                         if data[item][info] == []:
-                                errorText = "".join([errorText, "Agitations cannot be empty.\n"])
+                                errorText = "".join([errorText, errorTexts["AgitationEmpty"]])
                         for agitation in data[item][info]:
                             if agitation not in self.agitations and agitation not in checkedAgitations:
-                                text = ["Agitation pattern", "doesn't exist.\n"]
+                                text = errorTexts["AgitationNotFound"]
                                 text.insert(1, agitation)
                                 text = " ".join(text)
                                 errorText = "".join([errorText, text])
@@ -216,28 +219,28 @@ class DataController:
                 else:
                     if info == "interval":
                         if data[item][info] == "":
-                            errorText = "".join([errorText, "Interval cannot be blank.\n"])
+                            errorText = "".join([errorText, errorTexts["BlankInterval"]])
                         elif not self.check_float(data[item][info]):
                             if ',' in data[item][info]:
-                                errorText = "".join([errorText, "Interval: use . as decimal separator.\n"])
+                                errorText = "".join([errorText, errorTexts["IntervalDecimal"]])
                             else:
-                                errorText = "".join([errorText, "Interval must be a numeric value.\n"])
+                                errorText = "".join([errorText, errorTexts["IntervalNumeric"]])
                         elif float(data[item][info]) <= 0:
-                            errorText = "".join([errorText, "Interval must be greater than 0.\n"])
+                            errorText = "".join([errorText, errorTexts["IntervalZero"]])
                         continue
                     elif info == "repetitions":
                         if not data[item][info].isdigit():
                             if data[item][info] != "":
-                                errorText = "".join([errorText, "Repetitions must be an integer greater than 0.\n"])
+                                errorText = "".join([errorText, errorTexts["RepetitionsZero"]])
                         continue
                     elif info == "totalTime":
                         if not self.check_float(data[item][info]):
                             if ',' in data[item][info]:
-                                errorText = "".join([errorText, "Total time: use . as decimal separator.\n"])
+                                errorText = "".join([errorText, errorTexts["TotalTimeDecimal"]])
                             elif data[item][info] != "":
-                                errorText = "".join([errorText, "Total time must be a numeric value.\n"])
+                                errorText = "".join([errorText, errorTexts["TotalTimeNumeric"]])
                         elif float(data[item][info]) <= 0:
-                            errorText = "".join([errorText, "Total time must be greater than 0.\n"])
+                            errorText = "".join([errorText, errorTexts["TotalTimeZero"]])
                         continue
         
         if errorText != defaultText:
@@ -501,10 +504,15 @@ class PyLabApp (Tk):
     def write_config(self, data):
         config = configparser.ConfigParser()
         
-        for i in range(len(self.config)):
-            config[self.sections[i]] = self.config[self.sections[i]]
+        if isinstance (data, configparser.ConfigParser):
+            config = data
+        elif isinstance (data, dict):
+            config.read_dict(data)
+        else:
+            for i in range(len(self.config)):
+                config[self.sections[i]] = self.config[self.sections[i]]
         
-        with open(configFile, 'w') as confFile:
+        with open(self.configFile, 'w') as confFile:
             config.write(confFile)
     
     def parse_language(self):
@@ -522,7 +530,19 @@ class PyLabApp (Tk):
                 self.interfaceText = languages["en-US"]
             else:
                 print("Due to lack of valid options, choosing the default language")
-            
+     
+    def test_warnings(self):
+        oneButton = self.interfaceText["WarningWindow"]["Validation"]
+        twoButton = self.interfaceText["WarningWindow"]["Warns"]
+                
+        for text in oneButton:
+            GUIWarningWindow(oneButton[text], warningTitle="One Button Test", twoButton=False)
+            input("Press [Enter] to continue...")
+        
+        for text in twoButton:
+            GUIWarningWindow(twoButton[text], warningTitle="Two Button Test")
+            input("Press [Enter] to continue...")
+
 class GUIButton:
     def __init__(self, buttonType, master, **kwargs):
         #self.button = tkButton
@@ -585,7 +605,7 @@ class GUIButton:
 
 class GUIWarningWindow:
     
-    def __init__(self, warningText, warningTitle="Attention!", twoButton=True):                    
+    def __init__(self, warningText, warningTitle=None, twoButton=True):                    
         self.warning = Tk()
         self.warning.title(warningTitle)
         self.warning.geometry("320x160+%d+%d" % (app.winfo_x(), app.winfo_y()+app.winfo_height()/10))
@@ -594,10 +614,14 @@ class GUIWarningWindow:
         self.warning.grid_rowconfigure(0, weight=2)
         self.warning.grid_rowconfigure(1, weight=1)
         
+        warningTitle = warningTitle or app.interfaceText["WarningWindow"]["Title"]
+        
         self.buttonFrame = Frame(self.warning)
         self.buttonFrame.grid(row=1, column=0, sticky="news", padx=10, pady=(0, 5))
         self.buttonFrame.grid_columnconfigure(0, weight=1)
         self.buttonFrame.grid_rowconfigure(0, weight=1)
+        
+        buttonsText = app.interfaceText["WarningWindow"]["Buttons"]
                     
         self.label = Label(self.warning, text=warningText,\
                 width=220, font=font.Font(weight="bold", size=10), wraplength=320, anchor=CENTER, justify=CENTER)
@@ -605,14 +629,14 @@ class GUIWarningWindow:
         
         if twoButton:
             self.buttonFrame.grid_columnconfigure(1, weight=1)
-            self.yesButton = Button(self.buttonFrame, text="Yes")
+            self.yesButton = Button(self.buttonFrame, text=buttonsText["YesButton"])
             self.yesButton.grid(row=0, column=0, sticky="news")
             
-            self.noButton = Button(self.buttonFrame, text="No")
+            self.noButton = Button(self.buttonFrame, text=buttonsText["NoButton"])
             self.noButton.grid(row=0, column=1, sticky="news")
             
         else:
-            self.okButton = Button(self.buttonFrame, text="Ok", \
+            self.okButton = Button(self.buttonFrame, text=buttonsText["OkButton"], \
                             command = lambda: self.Destroy(), width=10, height=2)
             self.okButton.grid(row=0, column=0, sticky="ns", pady=0)
         
@@ -829,11 +853,10 @@ class SetTemperature(Frame):
         
     def CheckBeforeReturn(self, buttonGUI):
         if self.isRunning:
-            
+            warnText = app.interfaceText["WarningWindow"]["Warns"]
             app.set_param(self.nametowidget('bottomFrame.returnButton'), "state", 'disabled')
             if self.warningOut is None:
-                self.warningOut = GUIWarningWindow("Routine is running and you should\n"\
-                "stop it before going back.\nDo you want to stop it now?")
+                self.warningOut = GUIWarningWindow(warnText["RoutineRunning"])
                 
                 widgets = self.warningOut.GetWidgets()
                 
@@ -1451,13 +1474,13 @@ class AgitationsWindow(Frame):
         conflicts = app.dataController.check_dependencies(item)
                         
         if conflicts:
-            errorText = ["Not allowed.\nThe following recipe(s) depend on this pattern:"]
+            errorText = [app.interfaceText["WarnWindow"]["Warns"]["AgitationDependency"]]
             errorText.extend(conflicts)
             errorText = " ".join(errorText)
             GUIWarningWindow(errorText, twoButton=False)
         else:
             
-            warningText = "You're about to delete an item and it cannot be undone.\nAre you sure you want to do it?"
+            warningText = app.interfaceText["WarnWindow"]["Warns"]["DeleteItem"]
                            
             warning = GUIWarningWindow(warningText)
             
@@ -1754,7 +1777,7 @@ class RecipesWindow(Frame):
         self.continueButton.configure(state="normal")
         
     def confirm_delete(self):
-        warningText = "You're about to delete an recipe and it cannot be undone.\nAre you sure you want to do it?"
+        warningText = app.interfaceText["WarnWindow"]["Warns"]["DeleteRecipe"]
                        
         warning = GUIWarningWindow(warningText)
         
@@ -1822,7 +1845,7 @@ class PreferencesPane(Frame):
                      command=lambda: controller.show_frame("MainPage"))
         backButton.grid(row=0, column=2, sticky='news')
         okButton = Button(buttonsFrame, text="Ok", width=1, \
-                     command=lambda: controller.show_frame("MainPage"))
+                     command=lambda: self.save_prefs(True))
         okButton.grid(row=0, column=0, sticky='news')
         applyButton = Button(buttonsFrame, text="Apply", width=1, \
                      command=lambda: self.save_prefs())
@@ -1970,6 +1993,27 @@ class PreferencesPane(Frame):
 
     def save_prefs(self, goBack=False):
         newConfig = {}
+        config = configparser.ConfigParser(allow_no_value=True)
+        
+        scaleComments = "\n\
+## decimalplaces: number of decimal places for scale readings.\n\
+##                Must be an integer greater or equal to zero.\n\
+##\n\
+## referenceunit: users are highly disencouraged to change it manually.\n\
+##                Do it at your own risk (might change scale readings).\n\
+##                To re-calibrate at startup, leave it blank.\n\
+##\n\
+## weightunit: can be either metric (grams) or imperial (ounces)."
+                         
+        tempComments = "\n\
+## decimalplaces: number of decimal places for temperature readings.\n\
+##                 Must be an integer greater or equal to zero.\n\
+##\n\
+## temperatureunit can be either celsius or fahrenheit."
+        
+        interfaceComments = "\n\
+## language: must be one of the available languages in supported_languages.conf.\n\
+##           default language is en-US."
         
         scalePrefs = self.controller.sections[0]
         tempPrefs = self.controller.sections[1]
@@ -1978,7 +2022,7 @@ class PreferencesPane(Frame):
         newConfig.update({
                           scalePrefs: {},
                           tempPrefs: {},
-                          generalPrefs: {}
+                          interfacePrefs: {}
                          })
         
         ## Gets temperature prefs
@@ -2006,12 +2050,22 @@ class PreferencesPane(Frame):
                                      })
         
         ## Parses general prefs
-        newConfig[generalPrefs].update({self.controller.interfaceSubSections[0]: self.languageBox.get()})
+        newConfig[interfacePrefs].update({self.controller.interfaceSubSections[0]: self.languageBox.get()})
+                
+        config.read_dict(newConfig)
         
-        print(newConfig)
+        config.set(scalePrefs, scaleComments)
+        config.set(tempPrefs, tempComments)
+        config.set(interfacePrefs, interfaceComments)        
         
+        self.controller.write_config(config)
+        
+        saveText = self.controller.interfaceText["PreferencesPane"]["Warns"]
+        
+        GUIWarningWindow(saveText["Done"], warningTitle=saveText["Title"], twoButton=False)
+                
         if goBack:
-            pass
+            self.controller.show_frame("MainPage")
 
 if __name__ == "__main__":
     app = PyLabApp()
@@ -2037,5 +2091,7 @@ if __name__ == "__main__":
         data = app.read_json("recipe")
         if data:
             app.dataController.import_data(data, "recipe")
+
+    #app.test_warnings()
 
     app.mainloop()
