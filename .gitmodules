@@ -1,0 +1,3 @@
+[submodule "hx711py3"]
+	path = hx711py3
+	url = https://github.com/caio92/hx711py3
