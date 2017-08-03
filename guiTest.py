@@ -490,6 +490,7 @@ class PyLabApp (Tk):
         print ("Saionara, bitches!")
         self.destroy()
         sys.exit()
+        #raise SystemExit
         
     def read_config(self):
         config = configparser.ConfigParser()

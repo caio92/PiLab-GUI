@@ -154,7 +154,7 @@ class PeripheralsController():
                 self.activeTanks.append(tankName)
             else:
                 self.activeTanks.append(tankName)
-                self.getTempThread = threading.Thread(target=self.tempReader.Start)
+                self.getTempThread = threading.Thread(target=self.tempReader.Start, daemon=True)
                 self.getTempThread.start()
                 print("Started reading temperatures")
         else:
@@ -235,12 +235,13 @@ class PeripheralsController():
 
             #sleep(0.2)
         except: 
-            print("Deu erro no get_measure", sys.exc_info()[0])
+            print("Deu erro no get_measure", sys.exc_info()[0], sys.exc_info()[1])
         
     def activate_scale(self):
+        #pdb.set_trace()
         if not self.scaleActive:
             self.scaleActive = True
-            self.getWeightThread = threading.Thread(target=self.scaleReader.Start)
+            self.getWeightThread = threading.Thread(target=self.scaleReader.Start, daemon=True)
             self.getWeightThread.start()
             print("Started reading scale")
         
@@ -250,14 +251,14 @@ class PeripheralsController():
         #GPIO.add_event_detect(self.dout, GPIO.FALLING, callback=self.get_measure) 
         
     def deactivate_scale(self):
+        #pdb.set_trace()
         self.scaleActive = False
-        self.scale.powerDown()
         #GPIO.remove_event_detect(self.dout)
         #self.scaleButton.ToggleText()
         #button = self.scaleButton.GetButton()
         #button.config(anchor='center')
-        #if False and self.getWeightThread.is_alive():
-            #self.getWeightThread.join()
+        if self.getWeightThread.is_alive():
+            self.getWeightThread.join(timeout=1)
             
         print("Stopped reading scale")
 
@@ -275,7 +276,7 @@ class PeripheralsController():
     def stop_all(self):
         print("Stopping all active threads")
         try:
-            if self.getWeightThread.is_alive():                    
+            if self.getWeightThread.is_alive():
                 self.deactivate_scale()
         except:
             print("No scale threads to stop")
@@ -307,7 +308,7 @@ class TemperatureReader():
 
 class ScaleReader():
     def __init__(self, pController):
-        self.pController = pController  
+        self.pController = pController
     
     def Start(self):
         try:
@@ -315,6 +316,8 @@ class ScaleReader():
             self.pController.scale.tare()
             while self.pController.scaleActive:
                 self.pController.get_measure()
+            
+            self.pController.scale.powerDown()
     
         except:
-            print("Deu erro scale thread: ", sys.exc_info()[0])
+            print("Deu erro scale thread: ", sys.exc_info()[0], sys.exc_info()[1])
