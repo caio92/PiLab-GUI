@@ -389,7 +389,7 @@ class PyLabApp (Tk):
                                     }
                                 }
                             }
-    
+        
     def check_files(self):
         directory = os.path.dirname(self.defaultConfigDir)
         if not os.path.exists(directory):
@@ -480,6 +480,8 @@ class PyLabApp (Tk):
             self.write_config(self.config)
             
         self.pController.set_scale_reference(float(self.config[self.sections[0]][self.scaleSubSections[0]]))
+        
+        self.pController.set_precision()
     
     def on_closing(self):
         print ("Fechando ça'porra")
@@ -728,7 +730,7 @@ class MainPage(Frame):
         else:
             #turn off scale reading
             app.pController.deactivate_scale()
-
+            
             button.ToggleText()
             app.set_param(button.GetButton(), "anchor", 'center')
 
@@ -741,7 +743,6 @@ class GetTemperatures(Frame):
         self.activeTanks = []
 
         self.isCelsius = BooleanVar()
-        self.isCelsius.set(True)
 
         tempFrame1 = Frame(self, width=305, height= 54)#, bg='green')
         tempFrame2 = Frame(self, width=305, height= 54)#, bg='red')
@@ -825,8 +826,15 @@ class GetTemperatures(Frame):
         celsiusRadio.grid(row=0, column=1, sticky="news")
         fahrRadio.grid(row=0, column=2, sticky="news")
 
-        celsiusRadio.select()
-
+        if app.config["Temperature"]["TemperatureUnit"] == "celsius":
+            self.isCelsius.set(True)
+            celsiusRadio.select()
+        else:
+            self.isCelsius.set(False)
+            fahrRadio.select()
+            
+        self.change_temp_unit()
+            
         backButton = Button(bottomFrame, text=buttonsText["Back"], width=6, command=lambda: controller.show_frame("MainPage"))
         backButton.grid(row=0, column=1, sticky='news')
 
@@ -910,7 +918,6 @@ class SetTemperature(Frame):
         self.controller = controller
 
         self.isCelsius = BooleanVar()
-        self.isCelsius.set(True)
 
         targetTempFrame = Frame(self, width=305, height= 54)
         reservTempsFrame = Frame(self, width=305, height= 54)
@@ -969,7 +976,6 @@ class SetTemperature(Frame):
                      name="stopButton")
         
         unitVar = StringVar()
-        unitVar.set("°C")
         
         unitLabel = Label(setTempFrame, textvariable=unitVar, width=2)
         targetText = Label(setTempFrame, text="Target\nTemperature", width=10)
@@ -1005,7 +1011,14 @@ class SetTemperature(Frame):
         celsiusRadio.grid(row=0, column=1, sticky="news")
         fahrRadio.grid(row=0, column=2, sticky="news")
 
-        celsiusRadio.select()
+        if app.config["Temperature"]["TemperatureUnit"] == "celsius":
+            self.isCelsius.set(True)
+            celsiusRadio.select()
+            unitVar.set("°C")
+        else:
+            self.isCelsius.set(False)
+            fahrRadio.select()
+            unitVar.set("°F")
 
         backButton = Button(bottomFrame, text="Voltar", width=6, \
                      command=lambda: self.CheckBeforeReturn(runButtonGUI),\
@@ -1701,7 +1714,12 @@ class RecipesWindow(Frame):
         buttonsText = app.interfaceText["RecipesWindow"]["Buttons"]
                 
         durationLabel = Label(rowFrame1, text=labelsText["Duration"], font=titleFont)
-        tempLabel = Label(rowFrame1, text=labelsText["Temperature"], font=titleFont)
+ 
+        if app.config["Temperature"]["TemperatureUnit"] == "celsius":
+            tempLabel = Label(rowFrame1, text=labelsText["TemperatureC"], font=titleFont)
+        else:
+            tempLabel = Label(rowFrame1, text=labelsText["TemperatureF"], font=titleFont)
+            
         catLabel = Label(rowFrame2, text=labelsText["Category"], font=titleFont)
         filmLabel = Label(rowFrame2, text=labelsText["Film"], font=titleFont)
         nameLabel = Label(rowFrame2, text=labelsText["Name"], font=titleFont)

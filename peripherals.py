@@ -35,7 +35,10 @@ class PeripheralsController():
         self.activeTanks = []
         self.tempReader = TemperatureReader(self)
         
-        self.tempUnit = "°C"
+        #if app.config["Temperature"]["TemperatureUnit"] == "celsius":
+        #    self.tempUnit = "°C"
+        #else:
+        #    self.tempUnit = "°F"
         
         #self.scaleLock = threading.Lock()
         
@@ -135,7 +138,7 @@ class PeripheralsController():
         temperature = sensor.get_temperature(self.tanks[tankName].tankInfo["tempUnit"])
         if tankName in self.activeTanks:
             if self.tanks[tankName].tankInfo["updated"]:
-                formTemp = '%.2f %s' % (temperature, self.tempUnit)
+                formTemp = self.tempDecimalString % (temperature, self.tempUnit)
                 self.tanks[tankName].tankInfo["textVar"].set(formTemp)
             else:
                 self.tanks[tankName].tankInfo["updated"] = True
@@ -209,8 +212,7 @@ class PeripheralsController():
     def set_scale_reference(self, reference):
         self.scale.setReferenceUnit(reference)
         
-    def get_measure(self, channel):
-        #pdb.set_trace()
+    def get_measure(self, channel=None):
         #scaleMeasure = self.scale.getMeasure()
         try:
             #scaleMeasure = self.scale.getWeight()
@@ -224,15 +226,16 @@ class PeripheralsController():
                 
                 if scaleDiff > 0.05:
                     self.scaleInfo.pop(1)
-                    self.scaleInfo.append("{0: 4.2f}".format(scaleMeasure))
+                    
+                    self.scaleInfo.append(self.scaleDecimalString.format(scaleMeasure))
                     self.scaleButton.SetText(''.join(self.scaleInfo))
             else:
-                self.scaleInfo.append("{0: 4.2f}".format(scaleMeasure))
+                self.scaleInfo.append(self.scaleDecimalString.format(scaleMeasure))
                 self.scaleButton.SetText(''.join(self.scaleInfo))
 
             #sleep(0.2)
         except: 
-            pass
+            print("Deu erro no get_measure", sys.exc_info()[0])
         
     def activate_scale(self):
         if not self.scaleActive:
@@ -284,6 +287,13 @@ class PeripheralsController():
 
         print("Stopped all active threads")
 
+    def set_precision(self):
+        decimals = self.app.config["Temperature"]["DecimalPlaces"]
+        self.tempDecimalString = "".join(["%.", decimals, "f %s"])
+        
+        decimals = self.app.config["Scale"]["DecimalPlaces"]
+        self.scaleDecimalString = "".join(["{0: 4.", decimals, "f}"])
+
 class TemperatureReader():
     def __init__(self, pController):
         self.pController = pController  
@@ -305,4 +315,4 @@ class ScaleReader():
                 self.pController.get_measure()
     
         except:
-            print("Deu erro: ", sys.exc_info()[0])
+            print("Deu erro scale thread: ", sys.exc_info()[0])
