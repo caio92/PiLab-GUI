@@ -485,8 +485,8 @@ class PyLabApp (Tk):
     
     def on_closing(self):
         print ("Fechando ça'porra")
-        self.pController.cleanup()
         self.pController.stop_all()
+        self.pController.cleanup()
         print ("Saionara, bitches!")
         self.destroy()
         sys.exit()

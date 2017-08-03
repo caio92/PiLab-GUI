@@ -274,16 +274,18 @@ class PeripheralsController():
 
     def stop_all(self):
         print("Stopping all active threads")
-        
         try:
             if self.getWeightThread.is_alive():                    
                 self.deactivate_scale()
+        except:
+            print("No scale threads to stop")
                 
+        try:
             if self.getTempThread.is_alive():
                 for tank in self.activeTanks:
                     self.DeactivateTank(tank)
         except:
-            pass
+            print("No temperature threads to stop")
 
         print("Stopped all active threads")
 
