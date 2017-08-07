@@ -732,8 +732,9 @@ class MainPage(Frame):
             #turn off scale reading
             app.pController.deactivate_scale()
             
-            button.ToggleText()
-            app.set_param(button.GetButton(), "anchor", 'center')
+            #app.pController.scaleLock.acquire()
+            #button.ToggleText()
+            #app.set_param(button.GetButton(), "anchor", 'center')
 
 class GetTemperatures(Frame):
 

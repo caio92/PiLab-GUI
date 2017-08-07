@@ -8,10 +8,8 @@ coil_A_2_pin = 33 # orange
 coil_B_1_pin = 35 # blue
 coil_B_2_pin = 37 # yellow
 
-enable_pin = 40
+enable_pin = 29
  
-# adjust if different
-StepCount = 8
 #Seq = list(range(0, StepCount))
 #Seq[0] = [0,1,0,0]
 #Seq[1] = [0,1,0,1]
@@ -22,14 +20,25 @@ StepCount = 8
 #Seq[6] = [0,0,1,0]
 #Seq[7] = [0,1,1,0]
 
-Seq = [[1,0,0,1],
-       [1,0,0,0],
-       [1,1,0,0],
-       [0,1,0,0],
-       [0,1,1,0],
-       [0,0,1,0],
-       [0,0,1,1],
-       [0,0,0,1]]
+two_phase = [[1,0,0,1],
+             [1,1,0,0],
+             [0,1,1,0],
+             [0,0,1,1]]
+
+half_step = [[1,0,0,1],
+             [1,0,0,0],
+             [1,1,0,0],
+             [0,1,0,0],
+             [0,1,1,0],
+             [0,0,1,0],
+             [0,0,1,1],
+             [0,0,0,1]]
+             
+#Seq = half_step
+Seq = two_phase
+
+# adjust if different
+StepCount = len(Seq)
  
 GPIO.setup(enable_pin, GPIO.OUT)
 GPIO.output(enable_pin, 1)
@@ -65,14 +74,17 @@ def backwards(delay, steps):
             sleep(delay)
  
 if __name__ == '__main__':
-	#while True:
-	try:
-		delay = 1000#input("Time Delay (ms)?")
-		steps = 10#input("How many steps forward? ")
-		forward(int(delay) / 1000.0, int(steps))
-		#steps = input("How many steps backwards? ")
-		#backwards(int(delay) / 1000.0, int(steps))
-	except (KeyboardInterrupt, SystemExit):
-		GPIO.cleanup()
-	
-	GPIO.cleanup()
+    delay = 10#input("Time Delay (ms)?")
+    steps = 500#input("How many steps forward? ")
+    divider= 1000.0
+    ratio = int(delay)/divider
+    while True:
+        try:
+            
+            forward(ratio, int(steps))
+            #steps = input("How many steps backwards? ")
+            backwards(ratio, int(steps))
+        except (KeyboardInterrupt, SystemExit):
+            GPIO.cleanup()
+    
+    GPIO.cleanup()

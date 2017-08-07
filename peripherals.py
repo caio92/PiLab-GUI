@@ -35,12 +35,40 @@ class PeripheralsController():
         self.activeTanks = []
         self.tempReader = TemperatureReader(self)
         
+        coil_A1= 31 # pink
+        coil_A2 = 33 # orange
+        coil_B1 = 35 # blue
+        coil_B2 = 37 # yellow
+        
+        self.coil_pins = [coil_A1, coil_A2, coil_B1, coil_B2]
+        
+        for pin in self.coil_pins:
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.output(pin, GPIO.LOW)
+        
+        two_phase = [[1,0,0,1],
+                     [1,1,0,0],
+                     [0,1,1,0],
+                     [0,0,1,1]]
+
+        half_step = [[1,0,0,1],
+                     [1,0,0,0],
+                     [1,1,0,0],
+                     [0,1,0,0],
+                     [0,1,1,0],
+                     [0,0,1,0],
+                     [0,0,1,1],
+                     [0,0,0,1]]
+                     
+        #self.coilSeq = half_step
+        self.coilSeq = two_phase
+        
         #if app.config["Temperature"]["TemperatureUnit"] == "celsius":
         #    self.tempUnit = "°C"
         #else:
         #    self.tempUnit = "°F"
         
-        #self.scaleLock = threading.Lock()
+        self.scaleLock = threading.Lock()
         
         self.registeredTanks = False
         
@@ -236,7 +264,7 @@ class PeripheralsController():
             #sleep(0.2)
         except: 
             print("Deu erro no get_measure", sys.exc_info()[0], sys.exc_info()[1])
-        
+                    
     def activate_scale(self):
         #pdb.set_trace()
         if not self.scaleActive:
@@ -253,6 +281,8 @@ class PeripheralsController():
     def deactivate_scale(self):
         #pdb.set_trace()
         self.scaleActive = False
+        #
+        #self.scaleLock.release()
         #GPIO.remove_event_detect(self.dout)
         #self.scaleButton.ToggleText()
         #button = self.scaleButton.GetButton()
@@ -262,6 +292,7 @@ class PeripheralsController():
             
         print("Stopped reading scale")
 
+        
     def set_scale_out(self, guiButton):
         #self.scaleOut = textVar
         self.scaleButton = guiButton
@@ -297,6 +328,25 @@ class PeripheralsController():
         decimals = self.app.config["Scale"]["DecimalPlaces"]
         self.scaleDecimalString = "".join(["{0: 4.", decimals, "f}"])
 
+    def step_motor(self, delay, steps, direction):
+        stepCount = len(self.coilSeq)
+        
+        if direction == "forwards":
+            dirStep = range(stepCount)
+        elif direction == "backwards"
+            dirStep = reversed(range(StepCount))
+            
+        for i in range(steps):
+            for j in dirStep:
+                self.set_step(self.coilSeq [j][0], self.coilSeq [j][1], self.coilSeq [j][2], self.coilSeq [j][3])
+                sleep(delay)
+                
+    def set_step(self, w1, w2, w3, w4):
+        GPIO.output(self.coil_pins[0], w1)
+        GPIO.output(self.coil_pins[1], w2)
+        GPIO.output(self.coil_pins[2], w3)
+        GPIO.output(self.coil_pins[3], w4)
+
 class TemperatureReader():
     def __init__(self, pController):
         self.pController = pController  
@@ -311,13 +361,19 @@ class ScaleReader():
         self.pController = pController
     
     def Start(self):
+        
         try:
             self.pController.scale.reset()
             self.pController.scale.tare()
+            
             while self.pController.scaleActive:
                 self.pController.get_measure()
             
             self.pController.scale.powerDown()
+            
+            self.pController.scaleButton.ToggleText()
+            button = self.pController.scaleButton.GetButton()
+            button.config(anchor='center')
     
         except:
             print("Deu erro scale thread: ", sys.exc_info()[0], sys.exc_info()[1])
