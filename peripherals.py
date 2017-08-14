@@ -2,6 +2,8 @@ from w1thermsensor import W1ThermSensor
 import gc
 import sys
 from time import sleep
+from time import time
+from collections import deque
 import threading
 import RPi.GPIO as GPIO
 from hx711py3.scale import Scale
@@ -35,33 +37,7 @@ class PeripheralsController():
         self.activeTanks = []
         self.tempReader = TemperatureReader(self)
         
-        coil_A1= 31 # pink
-        coil_A2 = 33 # orange
-        coil_B1 = 35 # blue
-        coil_B2 = 37 # yellow
-        
-        self.coil_pins = [coil_A1, coil_A2, coil_B1, coil_B2]
-        
-        for pin in self.coil_pins:
-            GPIO.setup(pin, GPIO.OUT)
-            GPIO.output(pin, GPIO.LOW)
-        
-        two_phase = [[1,0,0,1],
-                     [1,1,0,0],
-                     [0,1,1,0],
-                     [0,0,1,1]]
-
-        half_step = [[1,0,0,1],
-                     [1,0,0,0],
-                     [1,1,0,0],
-                     [0,1,0,0],
-                     [0,1,1,0],
-                     [0,0,1,0],
-                     [0,0,1,1],
-                     [0,0,0,1]]
-                     
-        #self.coilSeq = half_step
-        self.coilSeq = two_phase
+        self.stepper = Stepper(self)
         
         #if app.config["Temperature"]["TemperatureUnit"] == "celsius":
         #    self.tempUnit = "°C"
@@ -292,7 +268,6 @@ class PeripheralsController():
             
         print("Stopped reading scale")
 
-        
     def set_scale_out(self, guiButton):
         #self.scaleOut = textVar
         self.scaleButton = guiButton
@@ -328,25 +303,10 @@ class PeripheralsController():
         decimals = self.app.config["Scale"]["DecimalPlaces"]
         self.scaleDecimalString = "".join(["{0: 4.", decimals, "f}"])
 
-    def step_motor(self, delay, steps, direction):
-        stepCount = len(self.coilSeq)
+    def run_recipe(self, agitations, duration, temperature, preferences=None):
+        #pdb.set_trace()
+        self.stepper.start(duration, agitations)
         
-        if direction == "forwards":
-            dirStep = range(stepCount)
-        elif direction == "backwards"
-            dirStep = reversed(range(StepCount))
-            
-        for i in range(steps):
-            for j in dirStep:
-                self.set_step(self.coilSeq [j][0], self.coilSeq [j][1], self.coilSeq [j][2], self.coilSeq [j][3])
-                sleep(delay)
-                
-    def set_step(self, w1, w2, w3, w4):
-        GPIO.output(self.coil_pins[0], w1)
-        GPIO.output(self.coil_pins[1], w2)
-        GPIO.output(self.coil_pins[2], w3)
-        GPIO.output(self.coil_pins[3], w4)
-
 class TemperatureReader():
     def __init__(self, pController):
         self.pController = pController  
@@ -377,3 +337,150 @@ class ScaleReader():
     
         except:
             print("Deu erro scale thread: ", sys.exc_info()[0], sys.exc_info()[1])
+
+class Stepper():
+    def __init__(self, pController, mode="half-step", coils=[31,33,35,37]):        
+        self.runningEvent = threading.Event()
+        self.runningEvent.set()
+        
+        self.invertFlag = False
+        self.recipeTimeoutFlag = False
+        
+        self.pController = pController
+        
+        self.coil_pins = coils
+        
+        for pin in self.coil_pins:
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.output(pin, GPIO.LOW)
+
+        half_step = [[1,0,0,1],
+                     [1,0,0,0],
+                     [1,1,0,0],
+                     [0,1,0,0],
+                     [0,1,1,0],
+                     [0,0,1,0],
+                     [0,0,1,1],
+                     [0,0,0,1]]
+        
+        if mode == "single-phase":
+            self.coilSeq = [half_step[1], half_step[3], half_step[5], half_step[7]]
+        elif mode == "two-phase":
+            self.coilSeq = [half_step[0], half_step[2], half_step[4], half_step[6]]
+        else:
+            self.coilSeq = half_step
+        
+        self.stepCount = len(self.coilSeq)
+        self.dirStep = range(self.stepCount)
+        
+        self.invertRatio = 8
+        
+    def change_direction(self):
+        self.dirStep = list(reversed(self.dirStep))
+        self.invertFlag = False
+    
+    def step_motor(self, delay=1/1000):        
+        while not self.recipeTimeoutFlag:    
+            for j in self.dirStep:
+                self.set_step(self.coilSeq [j][0], self.coilSeq [j][1], self.coilSeq [j][2], self.coilSeq [j][3])
+                sleep(delay)
+                
+            if self.invertFlag:
+                self.change_direction()
+                
+            self.runningEvent.wait()
+                
+    def set_step(self, w1, w2, w3, w4):
+        GPIO.output(self.coil_pins[0], w1)
+        GPIO.output(self.coil_pins[1], w2)
+        GPIO.output(self.coil_pins[2], w3)
+        GPIO.output(self.coil_pins[3], w4)
+
+    def watchman(self):
+        
+        isRunning = True
+        self.agitationTimeouts = self.set_timeouts(True)
+        invertTime = float(self.agitations[0]["duration"])/self.invertRatio + time()
+                
+        while not self.recipeTimeoutFlag:
+            if self.recipeTimeout <= time():
+                self.recipeTimeoutFlag = True
+                #forces rest period to end
+                self.runningEvent.set()
+                #print("Acabou em", time())
+                
+            elif self.agitationTimeouts[0][0] <= time():
+                #agitation[i][0] checks total time
+                self.agitation_done(True)
+                self.agitationTimeouts = self.set_timeouts()
+                isRunning = True
+                self.runningEvent.set()    
+                #print("Trocou agitação em", time())
+                
+            elif self.agitationTimeouts[0][1] <= time() and isRunning:
+                #agitation[i][1] checks duration
+                self.runningEvent.clear()
+                isRunning = False
+                self.agitationTimeouts[0][2] = time() + float(self.agitations[0]["interval"])
+                self.invertFlag = True
+                #print("Parou agitação em", time())
+                
+            elif self.agitationTimeouts[0][2] <= time() and not isRunning:
+                #agitation[i][2] checks rest interval
+                self.runningEvent.set()
+                isRunning = True
+                newTime = time()
+                self.agitationTimeouts[0][1] = newTime + float(self.agitations[0]["duration"])
+                invertTime = float(self.agitations[0]["duration"])/self.invertRatio + newTime
+                #print("Retomou agitação em", time())
+                
+            elif invertTime <= time() and isRunning and not self.invertFlag:
+                self.invertFlag = True
+                invertTime += float(self.agitations[0]["duration"])/self.invertRatio
+                #print("Inverteu", time())
+                
+            #re-checks values every 1s    
+            sleep(1)
+        
+    def set_timeouts(self, updateAll=True):
+        agitationTimeouts = deque([])
+        
+        for agitation in self.agitations:
+            if agitation["totalTime"]:
+                timeNow = time()
+                timeouts = [float(agitation["totalTime"]) + timeNow, float(agitation["duration"]) + timeNow, float(agitation["interval"]) + timeNow]
+            else:
+                timeNow = time()
+                timeouts = [float("inf"), float(agitation["duration"]) + timeNow, float(agitation["interval"]) + timeNow]
+                    
+            agitationTimeouts.append(timeouts)
+                
+        if updateAll:    
+            self.recipeTimeout = time() + float(self.recipeDuration)
+                                          
+        return agitationTimeouts
+    
+    def agitation_done(self, loop=False):
+        if len(self.agitations) > 1 and len(self.agitationTimeouts) > 1:
+            agitationDone = self.agitations.popleft()
+            timeoutDone = self.agitationTimeouts.popleft()
+        
+            if loop:
+                self.agitations.append(agitationDone)
+                self.agitationTimeouts.append(timeoutDone)
+            
+    def start(self, rDuration, agitations):
+        self.agitations = deque(agitations)
+        self.recipeDuration = rDuration
+        
+        try:
+            self.watchmanThread = threading.Thread(target=self.watchman, daemon=True)
+            
+            #tArgs = [rTime, self.recipeFlag, self.recipeTimeout]
+            self.runRecipeThread = threading.Thread(target=self.step_motor, daemon=True)
+            
+            self.watchmanThread.start()
+            self.runRecipeThread.start()
+    
+        except:
+            print("Deu erro stepper thread: ", sys.exc_info()[0], sys.exc_info()[1])

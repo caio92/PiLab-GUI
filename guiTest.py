@@ -1169,7 +1169,8 @@ class RunRecipe(Frame):
         backButton = Button(rowFrame3, text=buttonsText["Back"], width=1, \
                      command=lambda: self.controller.show_frame("MainPage"))
         backButton.grid(row=0, column=2, sticky='news')
-        runButton = Button(rowFrame3, text=buttonsText["Run"], width=1)
+        runButton = Button(rowFrame3, text=buttonsText["Run"], width=1, \
+                    command=lambda: self.prepare_run())
         runButton.grid(row=0, column=0, sticky='news')
         clearButton = Button(rowFrame3, text=buttonsText["Clear"], width=1, \
                       command=lambda: self.clear_all())
@@ -1281,7 +1282,48 @@ class RunRecipe(Frame):
     def load_carry_data(self, carryData):
         if carryData in self.controller.dataController.recipes:
             self.recipeList.set(carryData)
+    
+    def prepare_run(self, widget=None, done=False):
+
+        selection = self.recipeList.get()
+        
+        if not selection:
+            GUIWarningWindow("Please select a recipe.", warningTitle="Recipe Error", twoButton=False)
+        else: 
+            mainWidget = widget or self
             
+            for child in mainWidget.winfo_children():
+                if isinstance(child, Frame):
+                    self.prepare_run(child, done)
+                elif isinstance(child, Button) or isinstance(child, Combobox):
+                    if done:
+                        child.config(state='normal')
+                    else:
+                        child.config(state='disabled')
+            
+            if not widget and not done:
+                text = ["Recipe", selection, "is running..."]
+                self.window = GUIWarningWindow(" ".join(text), warningTitle="Running Recipe", twoButton=False)
+                button = self.window.okButton
+                button.config(command = lambda: self.prepare_run(done=True))
+                self.run_recipe(selection)
+            elif not widget and done:
+                self.window.Destroy()
+            
+    def run_recipe(self, selection):
+        recipe = app.dataController.recipes[selection]
+        
+        agitations = []
+        
+        for agitation in recipe["agitations"]:
+            agitations.append(app.dataController.agitations[agitation])
+            
+        totalTime = recipe["duration"]
+        temperature = recipe["temperature"]
+        
+        app.pController.run_recipe(agitations, totalTime, temperature)
+        #pdb.set_trace()
+        
 class AgitationsWindow(Frame):
     def __init__(self, parent, controller):
         
